@@ -34,6 +34,130 @@ namespace SonicRetro.SAModel.SAEditorCommon.DLLModGenerator
 			{ "animindexlist", "AnimationIndex *" }
 		};
 
+		private static void CheckItems(DllDataItemInfo item, DllIniData iniData, ref Dictionary<string, bool> defaultExportState)
+		{
+			bool modified = false;
+			switch (item.Type)
+			{
+				case "animindexlist":
+					{
+						Dictionary<int, string> hashes = new Dictionary<int, string>();
+						foreach (var hash in item.MD5Hash.Split('|').Select(a =>
+						{
+							string[] b = a.Split(':');
+							return (int.Parse(b[0], NumberFormatInfo.InvariantInfo), b[1]);
+						}))
+							hashes.Add(hash.Item1, hash.Item2);
+						foreach (var fn in Directory.GetFiles(item.Filename, "*.saanim"))
+							if (int.TryParse(Path.GetFileNameWithoutExtension(fn), out int i))
+							{
+								if (!hashes.ContainsKey(i) || HelperFunctions.FileHash(fn) != hashes[i])
+								{
+									modified = true;
+									break;
+								}
+								hashes.Remove(i);
+							}
+						if (hashes.Count > 0)
+							modified = true;
+					}
+					break;
+				case "charaobjectdatalist":
+					{
+						Dictionary<string, string> hashes = new Dictionary<string, string>();
+						foreach (var hash in item.MD5Hash.Split('|').Select(a =>
+						{
+							string[] b = a.Split(':');
+							return (b[0], b[1]);
+						}))
+							hashes.Add(hash.Item1, hash.Item2);
+						foreach (var fp in Directory.GetFiles(item.Filename, "*.sa2mdl").Concat(Directory.GetFiles(item.Filename, "*.saanim")).Append(Path.Combine(item.Filename, "info.ini")))
+						{
+							string fn = Path.GetFileName(fp);
+							if (!hashes.ContainsKey(fn) || HelperFunctions.FileHash(fp) != hashes[fn])
+							{
+								modified = true;
+								break;
+							}
+							hashes.Remove(fn);
+						}
+						if (hashes.Count > 0)
+							modified = true;
+					}
+					break;
+				case "kartspecialinfolist":
+					{
+						Dictionary<string, string> hashes = new Dictionary<string, string>();
+						foreach (var hash in item.MD5Hash.Split('|').Select(a =>
+						{
+							string[] b = a.Split(':');
+							return (b[0], b[1]);
+						}))
+							hashes.Add(hash.Item1, hash.Item2);
+						foreach (var fp in Directory.GetFiles(item.Filename, "*.sa2mdl").Append(Path.Combine(item.Filename, "info.ini")))
+						{
+							string fn = Path.GetFileName(fp);
+							if (!hashes.ContainsKey(fn) || HelperFunctions.FileHash(fp) != hashes[fn])
+							{
+								modified = true;
+								break;
+							}
+							hashes.Remove(fn);
+						}
+						if (hashes.Count > 0)
+							modified = true;
+					}
+					break;
+				case "kartmodelsarray":
+					{
+						Dictionary<string, string> hashes = new Dictionary<string, string>();
+						foreach (var hash in item.MD5Hash.Split('|').Select(a =>
+						{
+							string[] b = a.Split(':');
+							return (b[0], b[1]);
+						}))
+							hashes.Add(hash.Item1, hash.Item2);
+						foreach (var fp in Directory.GetFiles(item.Filename, "*.sa2bmdl").Concat(Directory.GetFiles(item.Filename, "*.sa1mdl")).Append(Path.Combine(item.Filename, "info.ini")))
+						{
+							string fn = Path.GetFileName(fp);
+							if (!hashes.ContainsKey(fn) || HelperFunctions.FileHash(fp) != hashes[fn])
+							{
+								modified = true;
+								break;
+							}
+							hashes.Remove(fn);
+						}
+						if (hashes.Count > 0)
+							modified = true;
+					}
+					break;
+				case "motiontable":
+					{
+						Dictionary<string, string> hashes = new Dictionary<string, string>();
+						foreach (var hash in item.MD5Hash.Split('|').Select(a =>
+						{
+							string[] b = a.Split(':');
+							return (b[0], b[1]);
+						}))
+							hashes.Add(hash.Item1, hash.Item2);
+						foreach (var fp in Directory.GetFiles(item.Filename, "*.saanim").Append(Path.Combine(item.Filename, "info.ini")))
+						{
+							string fn = Path.GetFileName(fp);
+							if (!hashes.ContainsKey(fn) || HelperFunctions.FileHash(fp) != hashes[fn])
+							{
+								modified = true;
+								break;
+							}
+							hashes.Remove(fn);
+						}
+						if (hashes.Count > 0)
+							modified = true;
+					}
+					break;
+			}
+			defaultExportState.Add(item.Filename, modified);
+		}
+
 		public static DllIniData LoadINI(string fileName,
 			ref Dictionary<string, bool> defaultExportState)
 		{
@@ -49,108 +173,43 @@ namespace SonicRetro.SAModel.SAEditorCommon.DLLModGenerator
 				defaultExportState.Add(item.Key, modified);
 			}
 
-			foreach (var item in IniData.DataItems)
+			foreach (DllDataItemInfo item in IniData.DataItems)
 			{
-				bool modified = false;
-				switch (item.Type)
-				{
-					case "animindexlist":
-						{
-							Dictionary<int, string> hashes = new Dictionary<int, string>();
-							foreach (var hash in item.MD5Hash.Split('|').Select(a =>
-												 {
-													 string[] b = a.Split(':');
-													 return (int.Parse(b[0], NumberFormatInfo.InvariantInfo), b[1]);
-												 }))
-								hashes.Add(hash.Item1, hash.Item2);
-							foreach (var fn in Directory.GetFiles(item.Filename, "*.saanim"))
-								if (int.TryParse(Path.GetFileNameWithoutExtension(fn), out int i))
-								{
-									if (!hashes.ContainsKey(i) || HelperFunctions.FileHash(fn) != hashes[i])
-									{
-										modified = true;
-										break;
-									}
-									hashes.Remove(i);
-								}
-							if (hashes.Count > 0)
-								modified = true;
-						}
-						break;
-					case "charaobjectdatalist":
-						{
-							Dictionary<string, string> hashes = new Dictionary<string, string>();
-							foreach (var hash in item.MD5Hash.Split('|').Select(a =>
-							{
-								string[] b = a.Split(':');
-								return (b[0], b[1]);
-							}))
-								hashes.Add(hash.Item1, hash.Item2);
-							foreach (var fp in Directory.GetFiles(item.Filename, "*.sa2mdl").Concat(Directory.GetFiles(item.Filename, "*.saanim")).Append(Path.Combine(item.Filename, "info.ini")))
-							{
-								string fn = Path.GetFileName(fp);
-								if (!hashes.ContainsKey(fn) || HelperFunctions.FileHash(fp) != hashes[fn])
-								{
-									modified = true;
-									break;
-								}
-								hashes.Remove(fn);
-							}
-							if (hashes.Count > 0)
-								modified = true;
-						}
-						break;
-					case "kartspecialinfolist":
-						{
-							Dictionary<string, string> hashes = new Dictionary<string, string>();
-							foreach (var hash in item.MD5Hash.Split('|').Select(a =>
-							{
-								string[] b = a.Split(':');
-								return (b[0], b[1]);
-							}))
-								hashes.Add(hash.Item1, hash.Item2);
-							foreach (var fp in Directory.GetFiles(item.Filename, "*.sa2mdl").Append(Path.Combine(item.Filename, "info.ini")))
-							{
-								string fn = Path.GetFileName(fp);
-								if (!hashes.ContainsKey(fn) || HelperFunctions.FileHash(fp) != hashes[fn])
-								{
-									modified = true;
-									break;
-								}
-								hashes.Remove(fn);
-							}
-							if (hashes.Count > 0)
-								modified = true;
-						}
-						break;
-					case "motiontable":
-						{
-							Dictionary<string, string> hashes = new Dictionary<string, string>();
-							foreach (var hash in item.MD5Hash.Split('|').Select(a =>
-							{
-								string[] b = a.Split(':');
-								return (b[0], b[1]);
-							}))
-								hashes.Add(hash.Item1, hash.Item2);
-							foreach (var fp in Directory.GetFiles(item.Filename, "*.saanim").Append(Path.Combine(item.Filename, "info.ini")))
-							{
-								string fn = Path.GetFileName(fp);
-								if (!hashes.ContainsKey(fn) || HelperFunctions.FileHash(fp) != hashes[fn])
-								{
-									modified = true;
-									break;
-								}
-								hashes.Remove(fn);
-							}
-							if (hashes.Count > 0)
-								modified = true;
-						}
-						break;
-				}
-				defaultExportState.Add(item.Filename, modified);
+				CheckItems(item, IniData, ref defaultExportState);
 			}
 
 			return IniData;
+		}
+
+		public static DllIniData LoadMultiINI(List<string> fileName,
+			ref Dictionary<string, bool> defaultExportState)
+		{
+			defaultExportState.Clear();
+			DllIniData newIniData = new DllIniData();
+			List<DllDataItemInfo> curItems = new List<DllDataItemInfo>();
+
+			foreach (string arrFile in fileName)
+			{
+				DllIniData IniData = IniSerializer.Deserialize<DllIniData>(arrFile);
+
+				Environment.CurrentDirectory = Path.GetDirectoryName(arrFile);
+
+				foreach (KeyValuePair<string, FileTypeHash> item in IniData.Files)
+				{
+					bool modified = HelperFunctions.FileHash(item.Key) != item.Value.Hash;
+					defaultExportState.Add(item.Key, modified);
+				}
+
+				foreach (DllDataItemInfo item in IniData.DataItems)
+				{
+					CheckItems(item, IniData, ref defaultExportState);
+
+					curItems.Add(item);
+				}
+			}
+			newIniData.DataItems = curItems;
+
+			return newIniData;
 		}
 
 		private static void CopyDirectory(DirectoryInfo srcdir, string dstdir)
@@ -332,6 +391,27 @@ namespace SonicRetro.SAModel.SAEditorCommon.DLLModGenerator
 								writer.WriteLine("};");
 							}
 							break;
+						case "kartmodelsarray":
+							{
+								foreach (string file in Directory.GetFiles(item.Filename, "*.sa2bmdl"))
+								{
+									new ModelFile(file).Model.ToStructVariables(writer, false, new List<string>());
+									writer.WriteLine();
+								}
+								foreach (string file in Directory.GetFiles(item.Filename, "*.sa1mdl"))
+								{
+									new ModelFile(file).Model.ToStructVariables(writer, false, new List<string>());
+									writer.WriteLine();
+								}
+								var data = IniSerializer.Deserialize<CharaObjectData[]>(Path.Combine(item.Filename, "info.ini"));
+								writer.WriteLine("KartModelsArray {0}[] = {{", item.Export);
+								List<string> objs = new List<string>(data.Length);
+								foreach (var obj in data)
+									objs.Add(obj.ToStruct());
+								writer.WriteLine("\t" + string.Join("," + Environment.NewLine + "\t", objs.ToArray()));
+								writer.WriteLine("};");
+							}
+							break;
 						case "motiontable":
 							{
 								foreach (string file in Directory.GetFiles(item.Filename, "*.saanim"))
@@ -366,6 +446,7 @@ namespace SonicRetro.SAModel.SAEditorCommon.DLLModGenerator
 						case "animindexlist":
 						case "charaobjectdatalist":
 						case "kartspecialinfolist":
+						case "kartmodelsarray":
 							writer.WriteLine("\tHookExport(handle, \"{0}\", {0});", item.Export);
 							break;
 						default:

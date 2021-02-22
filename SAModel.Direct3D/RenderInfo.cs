@@ -44,34 +44,81 @@ namespace SonicRetro.SAModel.Direct3D
 			device.SetSamplerState(0, SamplerState.MipFilter, mipfilter);
 		}
 
-		public static void Draw(IEnumerable<RenderInfo> items, Device device, EditorCamera camera)
+		public static List<RenderInfo> Queue(IEnumerable<RenderInfo> items, EditorCamera camera)
 		{
-			List<KeyValuePair<float, RenderInfo>> drawList = new List<KeyValuePair<float, RenderInfo>>();
+			List<RenderInfo> result = new List<RenderInfo>();
 			foreach (RenderInfo item in items)
 			{
 				float dist = Extensions.Distance(camera.Position, item.Bounds.Center.ToVector3()) + item.Bounds.Radius;
 				if (dist > camera.DrawDistance) continue;
-
-				if (item.Material != null && item.Material.UseAlpha)
-				{
-					bool ins = false;
-					for (int i = 0; i < drawList.Count; i++)
-					{
-						if (drawList[i].Key < dist)
-						{
-							drawList.Insert(i, new KeyValuePair<float, RenderInfo>(dist, item));
-							ins = true;
-							break;
-						}
-					}
-					if (!ins)
-						drawList.Add(new KeyValuePair<float, RenderInfo>(dist, item));
-				}
-				else
-					drawList.Insert(0, new KeyValuePair<float, RenderInfo>(float.MaxValue, item));
+				result.Add(item);
 			}
-			foreach (KeyValuePair<float, RenderInfo> item in drawList)
-				item.Value.Draw(device);
+			return result;
+		}
+
+		public static void Draw(IEnumerable<RenderInfo> items, Device device, EditorCamera camera, bool useOldSorting = false)
+		{
+			if (useOldSorting)
+			{
+				List<KeyValuePair<float, RenderInfo>> drawList = new List<KeyValuePair<float, RenderInfo>>();
+				foreach (RenderInfo item in items)
+				{
+					float dist = Extensions.Distance(camera.Position, item.Bounds.Center.ToVector3()) + item.Bounds.Radius;
+					if (dist > camera.DrawDistance) continue;
+
+					if (item.Material != null && item.Material.UseAlpha)
+					{
+						bool ins = false;
+						for (int i = 0; i < drawList.Count; i++)
+						{
+							if (drawList[i].Key < dist)
+							{
+								drawList.Insert(i, new KeyValuePair<float, RenderInfo>(dist, item));
+								ins = true;
+								break;
+							}
+						}
+						if (!ins)
+							drawList.Add(new KeyValuePair<float, RenderInfo>(dist, item));
+					}
+					else
+						drawList.Insert(0, new KeyValuePair<float, RenderInfo>(float.MaxValue, item));
+				}
+				foreach (KeyValuePair<float, RenderInfo> item in drawList)
+					item.Value.Draw(device);
+			}
+			else
+			{
+				List<KeyValuePair<float, RenderInfo>> drawListTransparent = new List<KeyValuePair<float, RenderInfo>>();
+				List<RenderInfo> drawListOpaque = new List<RenderInfo>();
+				foreach (RenderInfo item in items)
+				{
+					// Don't draw if too far
+					float dist = Extensions.Distance(camera.Position, item.Bounds.Center.ToVector3()) - item.Bounds.Radius;
+					if (dist > camera.DrawDistance) continue;
+
+					// Split into transparent and opaque lists
+					if (item.Material != null && item.Material.UseAlpha)
+					{
+						drawListTransparent.Add(new KeyValuePair<float, RenderInfo>(dist, item));
+					}
+					else
+						drawListOpaque.Add(item);
+				}
+
+				// Sort transparent meshes
+				drawListTransparent.Sort((y, x) => x.Key.CompareTo(y.Key));
+
+				// Draw opaque meshes
+				for (int i = drawListOpaque.Count - 1; i >= 0; i--)
+				{
+					drawListOpaque[i].Draw(device);
+				}
+
+				// Draw transparent meshes			
+				foreach (KeyValuePair<float, RenderInfo> item in drawListTransparent)
+					item.Value.Draw(device);
+			}
 		}
 	}
 }

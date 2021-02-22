@@ -11,7 +11,7 @@ using Color = System.Drawing.Color;
 
 namespace SonicRetro.SAModel.Direct3D
 {
-	public static class Extensions
+	public static partial class Extensions
 	{
 		public static Vector3 ToVector3(this Vertex vert) => new Vector3(vert.X, vert.Y, vert.Z);
 
@@ -74,11 +74,18 @@ namespace SonicRetro.SAModel.Direct3D
 			byte[] tmp = new byte[Math.Abs(bitmapData.Stride) * bitmapData.Height];
 			Marshal.Copy(bitmapData.Scan0, tmp, 0, tmp.Length);
 			bitmap.UnlockBits(bitmapData);
-			Texture texture = new Texture(device, bitmap.Width, bitmap.Height, 1, Usage.None, Format.A8R8G8B8, Pool.Managed);
+			Texture texture = new Texture(device, bitmap.Width, bitmap.Height, 0, Usage.AutoGenerateMipMap, Format.A8R8G8B8, Pool.Managed);
 			DataRectangle dataRectangle = texture.LockRectangle(0, LockFlags.None);
 			Marshal.Copy(tmp, 0, dataRectangle.DataPointer, tmp.Length);
 			texture.UnlockRectangle(0);
 			return texture;
+		}
+
+		public static BoundingSphere TransformBounds(this Attach attach, Matrix transform)
+		{
+			if (attach != null)
+				return new BoundingSphere(Vector3.TransformCoordinate(attach.Bounds.Center.ToVector3(), transform).ToVertex(), attach.Bounds.Radius);
+			else return new BoundingSphere();
 		}
 
 		public static void CalculateBounds(this Attach attach)
@@ -129,11 +136,11 @@ namespace SonicRetro.SAModel.Direct3D
 				switch (material.DestinationAlpha)
 				{
 					case AlphaInstruction.Zero:
-						device.SetRenderState(RenderState.DestinationBlendAlpha, Blend.Zero);
+						device.SetRenderState(RenderState.DestinationBlend, Blend.Zero);
 						break;
 
 					case AlphaInstruction.One:
-						device.SetRenderState(RenderState.DestinationBlendAlpha, Blend.One);
+						device.SetRenderState(RenderState.DestinationBlend, Blend.One);
 						break;
 
 					case AlphaInstruction.OtherColor:
@@ -143,29 +150,29 @@ namespace SonicRetro.SAModel.Direct3D
 						break;
 
 					case AlphaInstruction.SourceAlpha:
-						device.SetRenderState(RenderState.DestinationBlendAlpha, Blend.SourceAlpha);
+						device.SetRenderState(RenderState.DestinationBlend, Blend.SourceAlpha);
 						break;
 
 					case AlphaInstruction.InverseSourceAlpha:
-						device.SetRenderState(RenderState.DestinationBlendAlpha, Blend.InverseSourceAlpha);
+						device.SetRenderState(RenderState.DestinationBlend, Blend.InverseSourceAlpha);
 						break;
 
 					case AlphaInstruction.DestinationAlpha:
-						device.SetRenderState(RenderState.DestinationBlendAlpha, Blend.DestinationAlpha);
+						device.SetRenderState(RenderState.DestinationBlend, Blend.DestinationAlpha);
 						break;
 
 					case AlphaInstruction.InverseDestinationAlpha:
-						device.SetRenderState(RenderState.DestinationBlendAlpha, Blend.InverseDestinationAlpha);
+						device.SetRenderState(RenderState.DestinationBlend, Blend.InverseDestinationAlpha);
 						break;
 				}
 				switch (material.SourceAlpha)
 				{
 					case AlphaInstruction.Zero:
-						device.SetRenderState(RenderState.SourceBlendAlpha, Blend.Zero);
+						device.SetRenderState(RenderState.SourceBlend, Blend.Zero);
 						break;
 
 					case AlphaInstruction.One:
-						device.SetRenderState(RenderState.SourceBlendAlpha, Blend.One);
+						device.SetRenderState(RenderState.SourceBlend, Blend.One);
 						break;
 
 					case AlphaInstruction.OtherColor:
@@ -175,19 +182,19 @@ namespace SonicRetro.SAModel.Direct3D
 						break;
 
 					case AlphaInstruction.SourceAlpha:
-						device.SetRenderState(RenderState.SourceBlendAlpha, Blend.SourceAlpha);
+						device.SetRenderState(RenderState.SourceBlend, Blend.SourceAlpha);
 						break;
 
 					case AlphaInstruction.InverseSourceAlpha:
-						device.SetRenderState(RenderState.SourceBlendAlpha, Blend.InverseSourceAlpha);
+						device.SetRenderState(RenderState.SourceBlend, Blend.InverseSourceAlpha);
 						break;
 
 					case AlphaInstruction.DestinationAlpha:
-						device.SetRenderState(RenderState.SourceBlendAlpha, Blend.DestinationAlpha);
+						device.SetRenderState(RenderState.SourceBlend, Blend.DestinationAlpha);
 						break;
 
 					case AlphaInstruction.InverseDestinationAlpha:
-						device.SetRenderState(RenderState.SourceBlendAlpha, Blend.InverseDestinationAlpha);
+						device.SetRenderState(RenderState.SourceBlend, Blend.InverseDestinationAlpha);
 						break;
 				}
 				if (material.EnvironmentMap)
@@ -237,6 +244,7 @@ namespace SonicRetro.SAModel.Direct3D
 
 		public static BoundingSphere CalculateBounds(this Attach attach, int mesh, Matrix transform)
 		{
+			if (attach == null) return new BoundingSphere();
 			List<Vector3> verts = new List<Vector3>();
 			foreach (VertexData vert in attach.MeshInfo[mesh].Vertices)
 				verts.Add(Vector3.TransformCoordinate(vert.Position.ToVector3(), transform));
@@ -326,6 +334,7 @@ namespace SonicRetro.SAModel.Direct3D
 		{
 			int numverts = 0;
 			byte data = 0;
+			if (attach == null || attach.MeshInfo == null) return null;
 			foreach (MeshInfo item in attach.MeshInfo)
 			{
 				numverts += item.Vertices.Length;
@@ -643,7 +652,8 @@ namespace SonicRetro.SAModel.Direct3D
 					mesh.UpdateSelection(selind);
 		}
 
-		public static List<RenderInfo> DrawModel(this NJS_OBJECT obj, FillMode fillMode, MatrixStack transform, Texture[] textures, Mesh mesh, bool useMat, bool ignorematcolors = false, bool ignorelight = false)
+		#region Model drawing functions
+		public static List<RenderInfo> DrawModel(this NJS_OBJECT obj, FillMode fillMode, MatrixStack transform, Texture[] textures, Mesh mesh, bool useMat, bool ignorematcolors = false, bool ignorelight = false, bool invert = false, bool boundsByMesh = false)
 		{
 			List<RenderInfo> result = new List<RenderInfo>();
 
@@ -652,38 +662,58 @@ namespace SonicRetro.SAModel.Direct3D
 
 			transform.Push();
 			obj.ProcessTransforms(transform);
-
+		
 			if (obj.Attach != null)
 			{
+				BoundingSphere attachBounds = TransformBounds(obj.Attach, transform.Top);
 				for (int j = 0; j < obj.Attach.MeshInfo.Length; j++)
 				{
 					NJS_MATERIAL mat;
 					Texture texture = null;
-					// HACK: When useMat is true, mat shouldn't be null. However, checking it anyway ensures Sky Deck 3 loads.
-					// If it is in fact null, it applies a placeholder so that the editor doesn't crash.
-					if (useMat && obj.Attach.MeshInfo[j].Material != null)
-					{
-						
-						mat = new NJS_MATERIAL(obj.Attach.MeshInfo[j].Material);
 
-						if (textures != null && mat != null && mat.TextureID < textures.Length)
-							texture = textures[mat.TextureID];
-					}
-					else
+					// Inverted drawing for editor selection
+					if (invert)
 					{
+						Color col = Color.White;
+						if (useMat) col = obj.Attach.MeshInfo[j].Material.DiffuseColor;
+						col = Color.FromArgb(255 - col.R, 255 - col.G, 255 - col.B);
 						mat = new NJS_MATERIAL
 						{
-							DiffuseColor = Color.White,
+							DiffuseColor = col,
 							IgnoreLighting = true,
 							UseAlpha = false
 						};
+					}
 
-						if (obj.Attach.MeshInfo[j].Material == null)
+					// Regular drawing
+					else
+					{
+						// HACK: When useMat is true, mat shouldn't be null. However, checking it anyway ensures Sky Deck 3 loads.
+						// If it is in fact null, it applies a placeholder so that the editor doesn't crash.
+						if (useMat && obj.Attach.MeshInfo[j].Material != null)
 						{
-							MeshInfo old = obj.Attach.MeshInfo[j];
-							obj.Attach.MeshInfo[j] = new MeshInfo(mat, old.Polys, old.Vertices, old.HasUV, old.HasVC);
+							mat = new NJS_MATERIAL(obj.Attach.MeshInfo[j].Material);
+							if (textures != null && mat != null && mat.TextureID < textures.Length)
+								texture = textures[mat.TextureID];
+						}
+						else
+						{
+							mat = new NJS_MATERIAL
+							{
+								DiffuseColor = Color.White,
+								IgnoreLighting = true,
+								UseAlpha = false
+							};
+
+							if (obj.Attach.MeshInfo[j].Material == null)
+							{
+								MeshInfo old = obj.Attach.MeshInfo[j];
+								obj.Attach.MeshInfo[j] = new MeshInfo(mat, old.Polys, old.Vertices, old.HasUV, old.HasVC);
+							}
 						}
 					}
+
+					// Special flags
 					if (ignorematcolors)
 					{
 						mat.DiffuseColor = Color.FromArgb(mat.DiffuseColor.A, Color.White);
@@ -692,7 +722,12 @@ namespace SonicRetro.SAModel.Direct3D
 					{
 						mat.IgnoreLighting = true;
 					}
-					result.Add(new RenderInfo(mesh, j, transform.Top, mat, texture, fillMode, obj.Attach.CalculateBounds(j, transform.Top)));
+					if (boundsByMesh)
+					{
+						attachBounds = obj.Attach.CalculateBounds(j, transform.Top);
+					}
+
+					result.Add(new RenderInfo(mesh, j, transform.Top, mat, texture, fillMode, attachBounds));
 				}
 			}
 
@@ -700,46 +735,7 @@ namespace SonicRetro.SAModel.Direct3D
 			return result;
 		}
 
-		public static List<RenderInfo> DrawModelInvert(this NJS_OBJECT obj, MatrixStack transform, Mesh mesh, bool useMat)
-		{
-			List<RenderInfo> result = new List<RenderInfo>();
-
-			if (mesh == null)
-				return result;
-
-			transform.Push();
-			obj.ProcessTransforms(transform);
-			if (obj.Attach != null)
-				for (int j = 0; j < obj.Attach.MeshInfo.Length; j++)
-				{
-					Color col = Color.White;
-					if (useMat) col = obj.Attach.MeshInfo[j].Material.DiffuseColor;
-					col = Color.FromArgb(255 - col.R, 255 - col.G, 255 - col.B);
-					NJS_MATERIAL mat = new NJS_MATERIAL
-					{
-						DiffuseColor = col,
-						IgnoreLighting = true,
-						UseAlpha = false
-					};
-					result.Add(new RenderInfo(mesh, j, transform.Top, mat, null, FillMode.Wireframe, obj.Attach.CalculateBounds(j, transform.Top)));
-				}
-			transform.Pop();
-			return result;
-		}
-
-		public static List<RenderInfo> DrawModelTree(this NJS_OBJECT obj, FillMode fillMode, MatrixStack transform, Texture[] textures, Mesh[] meshes, bool ignorematcolor = false, bool ignorelight = false)
-		{
-			int modelindex = -1;
-			List<RenderInfo> result = new List<RenderInfo>();
-			do
-			{
-				result.AddRange(obj.DrawModelTree(fillMode, transform, textures, meshes, ref modelindex, ignorematcolor, ignorelight));
-				obj = obj.Sibling;
-			} while (obj != null);
-			return result;
-		}
-
-		private static List<RenderInfo> DrawModelTree(this NJS_OBJECT obj, FillMode fillMode, MatrixStack transform, Texture[] textures, Mesh[] meshes, ref int modelindex, bool ignorematcolors = false, bool ignorelight = false)
+		private static List<RenderInfo> DrawModelTree(this NJS_OBJECT obj, FillMode fillMode, MatrixStack transform, Texture[] textures, Mesh[] meshes, ref int modelindex, bool ignorematcolors = false, bool ignorelight = false, bool invert = false, bool boundsByMesh = false)
 		{
 			List<RenderInfo> result = new List<RenderInfo>();
 			transform.Push();
@@ -751,24 +747,50 @@ namespace SonicRetro.SAModel.Direct3D
 
 			if (attachValid & meshValid)
 			{
+				BoundingSphere attachBounds = TransformBounds(obj.Attach, transform.Top);
 				for (int j = 0; j < obj.Attach.MeshInfo.Length; j++)
 				{
 					Texture texture = null;
 					NJS_MATERIAL mat;
-					if (obj.Attach.MeshInfo[j].Material != null) 
-						mat = new NJS_MATERIAL(obj.Attach.MeshInfo[j].Material);
-					else
+
+					// Inverted drawing for editor selection
+					if (invert)
 					{
+						Color color = Color.Black;
+
+						// HACK: Null material hack 3: Fixes selecting objects in SADXLVL2, Twinkle Park 1.
+						if (obj.Attach.MeshInfo[j].Material != null)
+							color = obj.Attach.MeshInfo[j].Material.DiffuseColor;
+
+						color = Color.FromArgb(255 - color.R, 255 - color.G, 255 - color.B);
 						mat = new NJS_MATERIAL
 						{
-							DiffuseColor = Color.White,
+							DiffuseColor = color,
 							IgnoreLighting = true,
 							UseAlpha = false
 						};
 					}
-					// HACK: Null material hack 2: Fixes display of objects in SADXLVL2, Twinkle Park 1
-					if (textures != null && mat != null && mat.TextureID < textures.Length)
-						texture = textures[mat.TextureID];
+
+					// Regular drawing
+					else
+					{
+						if (obj.Attach.MeshInfo[j].Material != null)
+							mat = new NJS_MATERIAL(obj.Attach.MeshInfo[j].Material);
+						else
+						{
+							mat = new NJS_MATERIAL
+							{
+								DiffuseColor = Color.White,
+								IgnoreLighting = true,
+								UseAlpha = false
+							};
+						}
+						// HACK: Null material hack 2: Fixes display of objects in SADXLVL2, Twinkle Park 1
+						if (textures != null && mat != null && mat.TextureID < textures.Length)
+							texture = textures[mat.TextureID];
+					}
+
+					// Special flags
 					if (ignorematcolors)
 					{
 						mat.DiffuseColor = Color.FromArgb(mat.DiffuseColor.A, Color.White);
@@ -777,76 +799,22 @@ namespace SonicRetro.SAModel.Direct3D
 					{
 						mat.IgnoreLighting = true;
 					}
-					result.Add(new RenderInfo(meshes[modelindex], j, transform.Top, mat, texture, fillMode, obj.Attach.CalculateBounds(j, transform.Top)));
-				}
-			}
-
-			foreach (NJS_OBJECT child in obj.Children)
-				result.AddRange(DrawModelTree(child, fillMode, transform, textures, meshes, ref modelindex, ignorematcolors, ignorelight));
-			transform.Pop();
-			return result;
-		}
-
-		public static List<RenderInfo> DrawModelTreeInvert(this NJS_OBJECT obj, MatrixStack transform, Mesh[] meshes)
-		{
-			int modelindex = -1;
-			List<RenderInfo> result = new List<RenderInfo>();
-			do
-			{
-				result.AddRange(obj.DrawModelTreeInvert(transform, meshes, ref modelindex));
-				obj = obj.Sibling;
-			} while (obj != null);
-			return result;
-		}
-
-		private static List<RenderInfo> DrawModelTreeInvert(this NJS_OBJECT obj, MatrixStack transform, Mesh[] meshes, ref int modelindex)
-		{
-			List<RenderInfo> result = new List<RenderInfo>();
-			transform.Push();
-			modelindex++;
-			obj.ProcessTransforms(transform);
-
-			if (obj.Attach != null & meshes[modelindex] != null)
-			{
-				for (int j = 0; j < obj.Attach.MeshInfo.Length; j++)
-				{
-					Color color = Color.Black;
-
-					// HACK: Null material hack 3: Fixes selecting objects in SADXLVL2, Twinkle Park 1.
-					if (obj.Attach.MeshInfo[j].Material != null)
-						color = obj.Attach.MeshInfo[j].Material.DiffuseColor;
-
-					color = Color.FromArgb(255 - color.R, 255 - color.G, 255 - color.B);
-					NJS_MATERIAL mat = new NJS_MATERIAL
+					if (boundsByMesh)
 					{
-						DiffuseColor = color,
-						IgnoreLighting = true,
-						UseAlpha = false
-					};
-					result.Add(new RenderInfo(meshes[modelindex], j, transform.Top, mat, null, FillMode.Wireframe, obj.Attach.CalculateBounds(j, transform.Top)));
+						attachBounds = obj.Attach.CalculateBounds(j, transform.Top);
+					}
+
+					result.Add(new RenderInfo(meshes[modelindex], j, transform.Top, mat, texture, fillMode, attachBounds));
 				}
 			}
-
+			
 			foreach (NJS_OBJECT child in obj.Children)
-				result.AddRange(DrawModelTreeInvert(child, transform, meshes, ref modelindex));
+				result.AddRange(DrawModelTree(child, fillMode, transform, textures, meshes, ref modelindex, ignorematcolors, ignorelight, invert, boundsByMesh));
 			transform.Pop();
 			return result;
 		}
-
-		public static List<RenderInfo> DrawModelTreeAnimated(this NJS_OBJECT obj, FillMode fillMode, MatrixStack transform, Texture[] textures, Mesh[] meshes, NJS_MOTION anim, int animframe, bool ignorematcolor = false, bool ignorelight = false)
-		{
-			int modelindex = -1;
-			int animindex = -1;
-			List<RenderInfo> result = new List<RenderInfo>();
-			do
-			{
-				result.AddRange(obj.DrawModelTreeAnimated(fillMode, transform, textures, meshes, anim, animframe, ref modelindex, ref animindex, ignorematcolor, ignorelight));
-				obj = obj.Sibling;
-			} while (obj != null);
-			return result;
-		}
-
-		private static List<RenderInfo> DrawModelTreeAnimated(this NJS_OBJECT obj, FillMode fillMode, MatrixStack transform, Texture[] textures, Mesh[] meshes, NJS_MOTION anim, int animframe, ref int modelindex, ref int animindex, bool ignorematcolors = false, bool ignorelight = false)
+	
+		private static List<RenderInfo> DrawModelTreeAnimated(this NJS_OBJECT obj, FillMode fillMode, MatrixStack transform, Texture[] textures, Mesh[] meshes, NJS_MOTION anim, int animframe, ref int modelindex, ref int animindex, bool ignorematcolors = false, bool ignorelight = false, bool invert = false, bool boundsByMesh = false)
 		{
 			List<RenderInfo> result = new List<RenderInfo>();
 			transform.Push();
@@ -859,23 +827,44 @@ namespace SonicRetro.SAModel.Direct3D
 			else
 				obj.ProcessTransforms(transform);
 			if (obj.Attach != null & meshes[modelindex] != null)
+			{
+				BoundingSphere attachBounds = TransformBounds(obj.Attach, transform.Top);
 				for (int j = 0; j < obj.Attach.MeshInfo.Length; j++)
 				{
 					Texture texture = null;
 					NJS_MATERIAL mat;
-					if (obj.Attach.MeshInfo[j].Material != null)
-						mat = new NJS_MATERIAL(obj.Attach.MeshInfo[j].Material);
-					else
+					// Inverted drawing for editor selection
+					if (invert)
 					{
+						Color col = obj.Attach.MeshInfo[j].Material.DiffuseColor;
+						col = Color.FromArgb(255 - col.R, 255 - col.G, 255 - col.B);
 						mat = new NJS_MATERIAL
 						{
-							DiffuseColor = Color.White,
+							DiffuseColor = col,
 							IgnoreLighting = true,
 							UseAlpha = false
 						};
 					}
-					if (textures != null && mat.TextureID < textures.Length)
-						texture = textures[mat.TextureID];
+
+					// Regular drawing
+					else
+					{
+						if (obj.Attach.MeshInfo[j].Material != null)
+							mat = new NJS_MATERIAL(obj.Attach.MeshInfo[j].Material);
+						else
+						{
+							mat = new NJS_MATERIAL
+							{
+								DiffuseColor = Color.White,
+								IgnoreLighting = true,
+								UseAlpha = false
+							};
+						}
+						if (textures != null && mat.TextureID < textures.Length)
+							texture = textures[mat.TextureID];
+					}
+
+					// Special flags
 					if (ignorematcolors)
 					{
 						mat.DiffuseColor = Color.FromArgb(mat.DiffuseColor.A, Color.White);
@@ -884,11 +873,145 @@ namespace SonicRetro.SAModel.Direct3D
 					{
 						mat.IgnoreLighting = true;
 					}
-					result.Add(new RenderInfo(meshes[modelindex], j, transform.Top, mat, texture, fillMode, obj.Attach.CalculateBounds(j, transform.Top)));
+					if (boundsByMesh)
+					{
+						attachBounds = obj.Attach.CalculateBounds(j, transform.Top);
+					}
+					result.Add(new RenderInfo(meshes[modelindex], j, transform.Top, mat, texture, fillMode, attachBounds));
 				}
+			}
 			foreach (NJS_OBJECT child in obj.Children)
 				result.AddRange(DrawModelTreeAnimated(child, fillMode, transform, textures, meshes, anim, animframe, ref modelindex, ref animindex, ignorematcolors, ignorelight));
 			transform.Pop();
+			return result;
+		}
+
+		public static List<RenderInfo> DrawModelTreeWeighted(this NJS_OBJECT obj, FillMode fillMode, Matrix transform, Texture[] textures, Mesh[] meshes, bool ignorematcolor = false, bool ignorelight = false, bool invert = false, bool boundsByMesh = false)
+		{
+			List<RenderInfo> result = new List<RenderInfo>();
+			NJS_OBJECT[] objs = obj.GetObjects();
+			for (int i = 0; i < objs.Length; i++)
+				if (objs[i].Attach != null & meshes[i] != null)
+				{
+					BoundingSphere attachBounds = TransformBounds(obj.Attach, transform);
+					for (int j = 0; j < objs[i].Attach.MeshInfo.Length; j++)
+					{
+						Texture texture = null;
+						NJS_MATERIAL mat;
+						// Inverted drawing for editor selection
+						if (invert)
+						{
+							Color color = Color.Black;
+
+							// HACK: Null material hack 3: Fixes selecting objects in SADXLVL2, Twinkle Park 1.
+							if (objs[i].Attach.MeshInfo[j].Material != null)
+								color = objs[i].Attach.MeshInfo[j].Material.DiffuseColor;
+
+							color = Color.FromArgb(255 - color.R, 255 - color.G, 255 - color.B);
+							mat = new NJS_MATERIAL
+							{
+								DiffuseColor = color,
+								IgnoreLighting = true,
+								UseAlpha = false
+							};
+						}
+						// Regular drawing
+						else
+						{
+							if (objs[i].Attach.MeshInfo[j].Material != null)
+								mat = new NJS_MATERIAL(objs[i].Attach.MeshInfo[j].Material);
+							else
+							{
+								mat = new NJS_MATERIAL
+								{
+									DiffuseColor = Color.White,
+									IgnoreLighting = true,
+									UseAlpha = false
+								};
+							}
+							if (textures != null && mat != null && mat.TextureID < textures.Length)
+								texture = textures[mat.TextureID];
+						}
+
+						// Special flags
+						if (ignorematcolor)
+						{
+							mat.DiffuseColor = Color.FromArgb(mat.DiffuseColor.A, Color.White);
+						}
+						if (ignorelight)
+						{
+							mat.IgnoreLighting = true;
+						}
+						if (boundsByMesh)
+						{
+							attachBounds = obj.Attach.CalculateBounds(j, transform);
+						}
+
+						result.Add(new RenderInfo(meshes[i], j, transform, mat, texture, fillMode, attachBounds));
+					}
+				}
+			return result;
+		}
+
+		#endregion
+
+		#region Inverted model drawing functions
+		public static List<RenderInfo> DrawModelInvert(this NJS_OBJECT obj, MatrixStack transform, Mesh mesh, bool useMat, bool boundsByMesh = false)
+		{
+			return DrawModel(obj, FillMode.Wireframe, transform, null, mesh, useMat, invert: true);
+		}
+
+		private static List<RenderInfo> DrawModelTreeInvert(this NJS_OBJECT obj, MatrixStack transform, Mesh[] meshes, ref int modelindex, bool ignorematcolor = false, bool ignorelight = false, bool boundsByMesh = false)
+		{
+			return DrawModelTree(obj, FillMode.Wireframe, transform, null, meshes, ignorematcolor, ignorelight, true, boundsByMesh);
+		}
+
+		private static List<RenderInfo> DrawModelTreeAnimatedInvert(this NJS_OBJECT obj, MatrixStack transform, Mesh[] meshes, NJS_MOTION anim, int animframe, ref int modelindex, ref int animindex, bool ignorematcolor = false, bool ignorelight = false, bool invert = false, bool boundsByMesh = false)
+		{
+			return DrawModelTreeAnimated(obj, FillMode.Wireframe, transform, null, meshes, anim, animframe, ignorematcolor, ignorelight, true, boundsByMesh);
+		}
+
+		public static List<RenderInfo> DrawModelTreeWeightedInvert(this NJS_OBJECT obj, Matrix transform, Mesh[] meshes, bool ignorematcolor = false, bool ignorelight = false, bool invert = false, bool boundsByMesh = false)
+		{
+			return DrawModelTreeWeighted(obj, FillMode.Wireframe, transform, null, meshes, ignorematcolor, ignorelight, invert, boundsByMesh);
+		}
+		#endregion
+
+		#region Indexed model drawing functions
+		public static List<RenderInfo> DrawModelTreeInvert(this NJS_OBJECT obj, MatrixStack transform, Mesh[] meshes, bool ignorematcolor = false, bool ignorelight = false, bool invert = false, bool boundsByMesh = false)
+		{
+			int modelindex = -1;
+			List<RenderInfo> result = new List<RenderInfo>();
+			do
+			{
+				result.AddRange(obj.DrawModelTreeInvert(transform, meshes, ref modelindex, ignorelight, invert, boundsByMesh));
+				obj = obj.Sibling;
+			} while (obj != null);
+			return result;
+		}
+
+		public static List<RenderInfo> DrawModelTree(this NJS_OBJECT obj, FillMode fillMode, MatrixStack transform, Texture[] textures, Mesh[] meshes, bool ignorematcolor = false, bool ignorelight = false, bool invert = false, bool boundsByMesh = false)
+		{
+			int modelindex = -1;
+			List<RenderInfo> result = new List<RenderInfo>();
+			do
+			{
+				result.AddRange(obj.DrawModelTree(fillMode, transform, textures, meshes, ref modelindex, ignorematcolor, ignorelight, invert, boundsByMesh));
+				obj = obj.Sibling;
+			} while (obj != null);
+			return result;
+		}
+
+		public static List<RenderInfo> DrawModelTreeAnimated(this NJS_OBJECT obj, FillMode fillMode, MatrixStack transform, Texture[] textures, Mesh[] meshes, NJS_MOTION anim, int animframe, bool ignorematcolor = false, bool ignorelight = false, bool invert = false, bool boundsByMesh = false)
+		{
+			int modelindex = -1;
+			int animindex = -1;
+			List<RenderInfo> result = new List<RenderInfo>();
+			do
+			{
+				result.AddRange(obj.DrawModelTreeAnimated(fillMode, transform, textures, meshes, anim, animframe, ref modelindex, ref animindex, ignorematcolor, ignorelight, invert, boundsByMesh));
+				obj = obj.Sibling;
+			} while (obj != null);
 			return result;
 		}
 
@@ -904,103 +1027,7 @@ namespace SonicRetro.SAModel.Direct3D
 			} while (obj != null);
 			return result;
 		}
-
-		private static List<RenderInfo> DrawModelTreeAnimatedInvert(this NJS_OBJECT obj, MatrixStack transform, Mesh[] meshes, NJS_MOTION anim, int animframe, ref int modelindex, ref int animindex)
-		{
-			List<RenderInfo> result = new List<RenderInfo>();
-			transform.Push();
-			modelindex++;
-			bool animate = obj.Animate;
-			if (animate) animindex++;
-			if (!anim.Models.ContainsKey(animindex)) animate = false;
-			if (animate)
-				obj.ProcessTransforms(anim.Models[animindex], animframe, transform);
-			else
-				obj.ProcessTransforms(transform);
-			if (obj.Attach != null & meshes[modelindex] != null)
-				for (int j = 0; j < obj.Attach.MeshInfo.Length; j++)
-				{
-					Color col = obj.Attach.MeshInfo[j].Material.DiffuseColor;
-					col = Color.FromArgb(255 - col.R, 255 - col.G, 255 - col.B);
-					NJS_MATERIAL mat = new NJS_MATERIAL
-					{
-						DiffuseColor = col,
-						IgnoreLighting = true,
-						UseAlpha = false
-					};
-					result.Add(new RenderInfo(meshes[modelindex], j, transform.Top, mat, null, FillMode.Wireframe, obj.Attach.CalculateBounds(j, transform.Top)));
-				}
-			foreach (NJS_OBJECT child in obj.Children)
-				result.AddRange(DrawModelTreeAnimatedInvert(child, transform, meshes, anim, animframe, ref modelindex, ref animindex));
-			transform.Pop();
-			return result;
-		}
-
-		public static List<RenderInfo> DrawModelTreeWeighted(this NJS_OBJECT obj, FillMode fillMode, Matrix transform, Texture[] textures, Mesh[] meshes, bool ignorematcolor = false, bool ignorelight = false)
-		{
-			List<RenderInfo> result = new List<RenderInfo>();
-			NJS_OBJECT[] objs = obj.GetObjects();
-			for (int i = 0; i < objs.Length; i++)
-				if (objs[i].Attach != null & meshes[i] != null)
-				{
-					for (int j = 0; j < objs[i].Attach.MeshInfo.Length; j++)
-					{
-						Texture texture = null;
-						NJS_MATERIAL mat;
-						if (objs[i].Attach.MeshInfo[j].Material != null)
-							mat = new NJS_MATERIAL(objs[i].Attach.MeshInfo[j].Material);
-						else
-						{
-							mat = new NJS_MATERIAL
-							{
-								DiffuseColor = Color.White,
-								IgnoreLighting = true,
-								UseAlpha = false
-							};
-						}
-						if (textures != null && mat != null && mat.TextureID < textures.Length)
-							texture = textures[mat.TextureID];
-						if (ignorematcolor)
-						{
-							mat.DiffuseColor = Color.FromArgb(mat.DiffuseColor.A, Color.White);
-						}
-						if (ignorelight)
-						{
-							mat.IgnoreLighting = true;
-						}
-						result.Add(new RenderInfo(meshes[i], j, transform, mat, texture, fillMode, objs[i].Attach.CalculateBounds(j, transform)));
-					}
-				}
-			return result;
-		}
-
-		public static List<RenderInfo> DrawModelTreeWeightedInvert(this NJS_OBJECT obj, Matrix transform, Mesh[] meshes)
-		{
-			List<RenderInfo> result = new List<RenderInfo>();
-			NJS_OBJECT[] objs = obj.GetObjects();
-			for (int i = 0; i < objs.Length; i++)
-				if (objs[i].Attach != null & meshes[i] != null)
-				{
-					for (int j = 0; j < objs[i].Attach.MeshInfo.Length; j++)
-					{
-						Color color = Color.Black;
-
-						// HACK: Null material hack 3: Fixes selecting objects in SADXLVL2, Twinkle Park 1.
-						if (objs[i].Attach.MeshInfo[j].Material != null)
-							color = objs[i].Attach.MeshInfo[j].Material.DiffuseColor;
-
-						color = Color.FromArgb(255 - color.R, 255 - color.G, 255 - color.B);
-						NJS_MATERIAL mat = new NJS_MATERIAL
-						{
-							DiffuseColor = color,
-							IgnoreLighting = true,
-							UseAlpha = false
-						};
-						result.Add(new RenderInfo(meshes[i], j, transform, mat, null, FillMode.Wireframe, objs[i].Attach.CalculateBounds(j, transform)));
-					}
-				}
-			return result;
-		}
+		#endregion
 
 		public static HitResult CheckHit(this NJS_OBJECT obj, Vector3 Near, Vector3 Far, Viewport Viewport, Matrix Projection, Matrix View, Mesh mesh)
 		{
@@ -1079,379 +1106,6 @@ namespace SonicRetro.SAModel.Direct3D
 			return result;
 		}
 
-		public static Attach obj2nj(string objfile, string[] textures = null)
-		{
-			string[] objFile = File.ReadAllLines(objfile);
-			List<UV> uvs = new List<UV>();
-			List<Color> vcolors = new List<Color>();
-			List<Vertex> verts = new List<Vertex>();
-			List<Vertex> norms = new List<Vertex>();
-			Dictionary<string, NJS_MATERIAL> materials = new Dictionary<string, NJS_MATERIAL>();
-
-			NJS_MATERIAL lastMaterial = null;
-			// Determines whether or not the Texture ID for lastMaterial has been set.
-			bool textureIdAssigned = false;
-			// Used for materials that don't have a texid field.
-			int lastTextureId = 0;
-
-			List<Vertex> model_Vertex = new List<Vertex>();
-			List<Vertex> model_Normal = new List<Vertex>();
-			List<NJS_MATERIAL> model_Material = new List<NJS_MATERIAL>();
-			List<NJS_MESHSET> model_Mesh = new List<NJS_MESHSET>();
-			List<ushort> model_Mesh_MaterialID = new List<ushort>();
-			List<List<Poly>> model_Mesh_Poly = new List<List<Poly>>();
-			List<List<UV>> model_Mesh_UV = new List<List<UV>>();
-			List<List<Color>> model_Mesh_VColor = new List<List<Color>>();
-
-			foreach (string objLine in objFile)
-			{
-				string[] lin = objLine.Split('#')[0].Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
-
-				if (lin.Length == 0)
-					continue;
-
-				switch (lin[0].ToLowerInvariant())
-				{
-					case "mtllib":
-						string[] mtlFile = File.ReadAllLines(Path.Combine(Path.GetDirectoryName(objfile), lin[1]));
-						foreach (string mtlLine in mtlFile)
-						{
-							string[] mlin = mtlLine.Split('#')[0].Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
-
-							if (mlin.Length == 0)
-								continue;
-
-							#region Parsing Material Properties
-							// Calling trim on this to be compatible with 3ds Max mtl files.
-							// It likes to indent them with tabs (\t)
-							switch (mlin[0].ToLowerInvariant().Trim())
-							{
-								case "newmtl":
-									// Texture ID failsafe
-									if (!textureIdAssigned && lastMaterial != null)
-										lastMaterial.TextureID = ++lastTextureId;
-
-									textureIdAssigned = false;
-									lastMaterial = new NJS_MATERIAL { UseAlpha = false, UseTexture = false };
-									materials.Add(mlin[1], lastMaterial);
-									break;
-
-								case "kd":
-									lastMaterial.DiffuseColor = Color.FromArgb(
-										(int)Math.Round(float.Parse(mlin[1], CultureInfo.InvariantCulture) * 255),
-										(int)Math.Round(float.Parse(mlin[2], CultureInfo.InvariantCulture) * 255),
-										(int)Math.Round(float.Parse(mlin[3], CultureInfo.InvariantCulture) * 255));
-									break;
-
-								case "map_ka":
-									lastMaterial.UseAlpha = true;
-									if (textures != null && mlin.Length > 1)
-									{
-										string baseName = Path.GetFileNameWithoutExtension(mlin[1]);
-										for (int tid = 0; tid < textures.Length; tid++)
-										{
-											if (textures[tid] == baseName)
-											{
-												lastMaterial.TextureID = tid;
-												lastTextureId = tid;
-												textureIdAssigned = true;
-												break;
-											}
-										}
-									}
-									break;
-
-								case "map_kd":
-									lastMaterial.UseTexture = true;
-									if (textures != null && mlin.Length > 1)
-									{
-										string baseName = Path.GetFileNameWithoutExtension(mlin[1]);
-										for (int tid = 0; tid < textures.Length; tid++)
-										{
-											if (textures[tid] == baseName)
-											{
-												lastMaterial.TextureID = tid;
-												lastTextureId = tid;
-												textureIdAssigned = true;
-												break;
-											}
-										}
-									}
-									break;
-
-								case "ke":
-									lastMaterial.Exponent = float.Parse(mlin[1], CultureInfo.InvariantCulture);
-									break;
-
-								case "d":
-								case "tr":
-									lastMaterial.DiffuseColor = Color.FromArgb(
-										(int)Math.Round(float.Parse(mlin[1], CultureInfo.InvariantCulture) * 255),
-										lastMaterial.DiffuseColor);
-									break;
-
-								case "ks":
-									lastMaterial.SpecularColor = Color.FromArgb(
-										(int)Math.Round(float.Parse(mlin[1], CultureInfo.InvariantCulture) * 255),
-										(int)Math.Round(float.Parse(mlin[2], CultureInfo.InvariantCulture) * 255),
-										(int)Math.Round(float.Parse(mlin[3], CultureInfo.InvariantCulture) * 255));
-									break;
-
-								case "texid":
-									if (!textureIdAssigned)
-									{
-										int textureID = int.Parse(mlin[1], CultureInfo.InvariantCulture);
-										lastMaterial.TextureID = textureID;
-										lastTextureId = textureID;
-										textureIdAssigned = true;
-									}
-									break;
-
-								case "-u_mirror":
-									if (bool.TryParse(mlin[1], out bool uMirror))
-										lastMaterial.FlipU = uMirror;
-
-									break;
-
-								case "-v_mirror":
-									if (bool.TryParse(mlin[1], out bool vMirror))
-										lastMaterial.FlipV = vMirror;
-
-									break;
-
-								case "-u_tile":
-									if (bool.TryParse(mlin[1], out bool uTile))
-										lastMaterial.ClampU = !uTile;
-
-									break;
-
-								case "-v_tile":
-									if (bool.TryParse(mlin[1], out bool vTile))
-										lastMaterial.ClampV = !vTile;
-
-									break;
-
-								case "-enviromap":
-									lastMaterial.EnvironmentMap = true;
-									break;
-
-								case "-doublesided":
-									lastMaterial.DoubleSided = true;
-									break;
-
-								case "-ignorelighting":
-									lastMaterial.IgnoreLighting = bool.Parse(mlin[1]);
-									break;
-
-								case "-flatshaded":
-									lastMaterial.FlatShading = bool.Parse(mlin[1]);
-									break;
-							}
-							#endregion
-						}
-
-						break;
-
-					case "v":
-						verts.Add(new Vertex(float.Parse(lin[1], CultureInfo.InvariantCulture),
-							float.Parse(lin[2], CultureInfo.InvariantCulture),
-							float.Parse(lin[3], CultureInfo.InvariantCulture)));
-						break;
-
-					case "vn":
-						norms.Add(new Vertex(float.Parse(lin[1], CultureInfo.InvariantCulture),
-							float.Parse(lin[2], CultureInfo.InvariantCulture),
-							float.Parse(lin[3], CultureInfo.InvariantCulture)));
-						break;
-
-					case "vt":
-						uvs.Add(new UV
-						{
-							U = float.Parse(lin[1], CultureInfo.InvariantCulture) * -1,
-							V = float.Parse(lin[2], CultureInfo.InvariantCulture) * -1
-						});
-						break;
-
-					case "vc":
-						vcolors.Add(Color.FromArgb((int)Math.Round(float.Parse(lin[1], CultureInfo.InvariantCulture)),
-							(int)Math.Round(float.Parse(lin[2], CultureInfo.InvariantCulture)),
-							(int)Math.Round(float.Parse(lin[3], CultureInfo.InvariantCulture)),
-							(int)Math.Round(float.Parse(lin[4], CultureInfo.InvariantCulture))));
-						break;
-
-					case "usemtl":
-						model_Mesh_Poly.Add(new List<Poly>());
-						model_Mesh_UV.Add(new List<UV>());
-						model_Mesh_VColor.Add(new List<Color>());
-						if (materials.ContainsKey(lin[1]))
-						{
-							NJS_MATERIAL mtl = materials[lin[1]];
-							if (model_Material.Contains(mtl))
-								model_Mesh_MaterialID.Add((ushort)model_Material.IndexOf(mtl));
-							else
-							{
-								model_Mesh_MaterialID.Add((ushort)model_Material.Count);
-								model_Material.Add(mtl);
-							}
-						}
-						else
-							model_Mesh_MaterialID.Add(0);
-						break;
-
-					case "f":
-						if (model_Mesh_MaterialID.Count == 0)
-						{
-							model_Mesh_MaterialID.Add(0);
-							model_Mesh_Poly.Add(new List<Poly>());
-							model_Mesh_UV.Add(new List<UV>());
-							model_Mesh_VColor.Add(new List<Color>());
-						}
-						ushort[] pol = new ushort[3];
-						for (int i = 1; i <= 3; i++)
-						{
-							string[] lne = lin[i].Split('/');
-							Vertex ver = verts.GetItemNeg(int.Parse(lne[0]));
-							Vertex nor = norms.GetItemNeg(int.Parse(lne[2]));
-							if (uvs.Count > 0)
-							{
-								if (!string.IsNullOrEmpty(lne[1]))
-								{
-									model_Mesh_UV[model_Mesh_UV.Count - 1].Add(uvs.GetItemNeg(int.Parse(lne[1])));
-								}
-							}
-							if (vcolors.Count > 0)
-							{
-								if (lne.Length == 4)
-								{
-									model_Mesh_VColor[model_Mesh_VColor.Count - 1].Add(vcolors.GetItemNeg(int.Parse(lne[3])));
-								}
-								else if (!string.IsNullOrEmpty(lne[1]))
-								{
-									model_Mesh_VColor[model_Mesh_VColor.Count - 1].Add(vcolors.GetItemNeg(int.Parse(lne[1])));
-								}
-							}
-							int verind = model_Vertex.IndexOf(ver);
-							while (verind > -1)
-							{
-								if (Equals(model_Normal[verind], nor))
-									break;
-								verind = model_Vertex.IndexOf(ver, verind + 1);
-							}
-							if (verind > -1)
-							{
-								pol[i - 1] = (ushort)verind;
-							}
-							else
-							{
-								model_Vertex.Add(ver);
-								model_Normal.Add(nor);
-								pol[i - 1] = (ushort)(model_Vertex.Count - 1);
-							}
-						}
-						Poly tri = Poly.CreatePoly(Basic_PolyType.Triangles);
-						for (int i = 0; i < 3; i++)
-							tri.Indexes[i] = pol[i];
-						model_Mesh_Poly[model_Mesh_Poly.Count - 1].Add(tri);
-						break;
-
-					case "t":
-						if (model_Mesh_MaterialID.Count == 0)
-						{
-							model_Mesh_MaterialID.Add(0);
-							model_Mesh_Poly.Add(new List<Poly>());
-							model_Mesh_UV.Add(new List<UV>());
-							model_Mesh_VColor.Add(new List<Color>());
-						}
-						List<ushort> str = new List<ushort>();
-						for (int i = 1; i <= lin.Length - 1; i++)
-						{
-							Vertex ver2 = verts.GetItemNeg(int.Parse(lin[i]));
-							Vertex nor2 = norms.GetItemNeg(int.Parse(lin[i]));
-							if (uvs.Count > 0)
-								model_Mesh_UV[model_Mesh_UV.Count - 1].Add(uvs.GetItemNeg(int.Parse(lin[i])));
-							if (vcolors.Count > 0)
-								model_Mesh_VColor[model_Mesh_VColor.Count - 1].Add(vcolors.GetItemNeg(int.Parse(lin[i])));
-							int verind = model_Vertex.IndexOf(ver2);
-							while (verind > -1)
-							{
-								if (Equals(model_Normal[verind], nor2))
-									break;
-								verind = model_Vertex.IndexOf(ver2, verind + 1);
-							}
-							if (verind > -1)
-							{
-								str.Add((ushort)verind);
-							}
-							else
-							{
-								model_Vertex.Add(ver2);
-								model_Normal.Add(nor2);
-								str.Add((ushort)(model_Vertex.Count - 1));
-							}
-						}
-						model_Mesh_Poly[model_Mesh_Poly.Count - 1].Add(new Strip(str.ToArray(), false));
-						break;
-
-					case "q":
-						List<ushort> str2 = new List<ushort>(model_Mesh_Poly[model_Mesh_Poly.Count - 1][model_Mesh_Poly[model_Mesh_Poly.Count - 1].Count - 1].Indexes);
-						for (int i = 1; i <= lin.Length - 1; i++)
-						{
-							Vertex ver3 = verts.GetItemNeg(int.Parse(lin[i]));
-							Vertex nor3 = norms.GetItemNeg(int.Parse(lin[i]));
-							if (uvs.Count > 0)
-								model_Mesh_UV[model_Mesh_UV.Count - 1].Add(uvs.GetItemNeg(int.Parse(lin[i])));
-							if (vcolors.Count > 0)
-								model_Mesh_VColor[model_Mesh_VColor.Count - 1].Add(vcolors.GetItemNeg(int.Parse(lin[i])));
-							int verind = model_Vertex.IndexOf(ver3);
-							while (verind > -1)
-							{
-								if (Equals(model_Normal[verind], nor3))
-									break;
-								verind = model_Vertex.IndexOf(ver3, verind + 1);
-							}
-							if (verind > -1)
-							{
-								str2.Add((ushort)verind);
-							}
-							else
-							{
-								model_Vertex.Add(ver3);
-								model_Normal.Add(nor3);
-								str2.Add((ushort)(model_Vertex.Count - 1));
-							}
-						}
-						model_Mesh_Poly[model_Mesh_Poly.Count - 1][model_Mesh_Poly[model_Mesh_Poly.Count - 1].Count - 1] = new Strip(str2.ToArray(), false);
-						break;
-				}
-			}
-
-			// Material failsafe
-			if (model_Material.Count == 0)
-				model_Material.Add(new NJS_MATERIAL());
-
-			for (int i = 0; i < model_Mesh_MaterialID.Count; i++)
-			{
-				model_Mesh.Add(new NJS_MESHSET(model_Mesh_Poly[i].ToArray(), false, model_Mesh_UV[i].Count > 0, model_Mesh_VColor[i].Count > 0));
-				model_Mesh[i].MaterialID = model_Mesh_MaterialID[i];
-				if (model_Mesh[i].UV != null)
-				{
-					// HACK: Checking if j < model_Mesh_UV[i].Count prevents an out-of-range exception with SADXLVL2 when importing a whole stage export of Emerald Coast 1.
-					for (int j = 0; j < model_Mesh[i].UV.Length && j < model_Mesh_UV[i].Count; j++)
-						model_Mesh[i].UV[j] = model_Mesh_UV[i][j];
-				}
-				if (model_Mesh[i].VColor != null)
-				{
-					for (int j = 0; j < model_Mesh[i].VColor.Length; j++)
-						model_Mesh[i].VColor[j] = model_Mesh_VColor[i][j];
-				}
-			}
-
-			Attach model = new BasicAttach(model_Vertex.ToArray(), model_Normal.ToArray(), model_Mesh, model_Material);
-			model.ProcessVertexData();
-			model.CalculateBounds();
-			return model;
-		}
-
 		private static T GetItemNeg<T>(this List<T> list, int index)
 		{
 			if (index < 0)
@@ -1516,520 +1170,6 @@ namespace SonicRetro.SAModel.Direct3D
 			return eulerRotationZXY;
 		}
 
-		/// <summary>
-		/// Writes an object model (basic format) to the specified stream, in Alias-Wavefront *.OBJ format.
-		/// </summary>
-		/// <param name="objstream">stream representing a wavefront obj file to export to</param>
-		/// <param name="obj">Model to export.</param>
-		/// <param name="materialPrefix">idk</param>
-		/// <param name="transform">Used for calculating transforms.</param>
-		/// <param name="totalVerts">This keeps track of how many verts have been exported to the current file. This is necessary because *.obj vertex indeces are file-level, not object-level.</param>
-		/// <param name="totalNorms">This keeps track of how many vert normals have been exported to the current file. This is necessary because *.obj vertex normal indeces are file-level, not object-level.</param>
-		/// <param name="totalUVs">This keeps track of how many texture verts have been exported to the current file. This is necessary because *.obj textue vert indeces are file-level, not object-level.</param>
-		private static void WriteObjFromBasicAttach(StreamWriter objstream, NJS_OBJECT obj, ref List<NJS_MATERIAL> materials, Matrix transform, ref int totalVerts, ref int totalNorms, ref int totalUVs)
-		{
-			if (obj.Attach != null)
-			{
-				var basicAttach = (BasicAttach)obj.Attach;
-				bool wroteNormals = false;
-				objstream.WriteLine("g " + obj.Name);
-
-				#region Outputting Verts and Normals
-				foreach (Vertex v in basicAttach.Vertex)
-				{
-					Vector3 inputVert = new Vector3(v.X, v.Y, v.Z);
-					Vector3 outputVert = Vector3.TransformCoordinate(inputVert, transform);
-					objstream.WriteLine("v {0} {1} {2}", outputVert.X.ToString(NumberFormatInfo.InvariantInfo), outputVert.Y.ToString(NumberFormatInfo.InvariantInfo), outputVert.Z.ToString(NumberFormatInfo.InvariantInfo));
-				}
-
-				if (basicAttach.Vertex.Length == basicAttach.Normal.Length)
-				{
-					foreach (Vertex v in basicAttach.Normal)
-					{
-						objstream.WriteLine("vn {0} {1} {2}", v.X.ToString(NumberFormatInfo.InvariantInfo), v.Y.ToString(NumberFormatInfo.InvariantInfo), v.Z.ToString(NumberFormatInfo.InvariantInfo));
-					}
-					wroteNormals = true;
-				}
-				#endregion
-
-				#region Outputting Meshes
-				int meshID = 0;
-				foreach (NJS_MESHSET set in basicAttach.Mesh)
-				{
-					if (basicAttach.Material.Count > 0)
-					{
-						/*if (basicAttach.Material[set.MaterialID].UseTexture)
-						{
-							objstream.WriteLine("usemtl {0}_material_{1}", materialPrefix, basicAttach.Material[set.MaterialID].TextureID);
-						}*/
-
-
-						int materialIndexInList = 0;
-
-						NJS_MATERIAL material = basicAttach.Material[set.MaterialID];
-
-						if (!materials.Contains(material))
-						{
-							materials.Add(material);
-						}
-
-						materialIndexInList = materials.IndexOf(material);
-
-						objstream.WriteLine("usemtl material_{0}", materialIndexInList);
-					}
-
-					if (set.UV != null)
-					{
-						foreach (UV uv in set.UV)
-						{
-							objstream.WriteLine("vt {0} {1}", uv.U.ToString(NumberFormatInfo.InvariantInfo), (-uv.V).ToString(NumberFormatInfo.InvariantInfo));
-						}
-					}
-
-					int processedUVStripCount = 0;
-					foreach (Poly poly in set.Poly)
-					{
-						switch (poly.PolyType)
-						{
-							case Basic_PolyType.Strips:
-								var polyStrip = (Strip)poly;
-								int expectedTrisCount = polyStrip.Indexes.Length - 2;
-								bool triangleWindReversed = polyStrip.Reversed;
-
-								for (int stripIndx = 0; stripIndx < expectedTrisCount; stripIndx++)
-								{
-									if (triangleWindReversed)
-									{
-										Vector3 newFace = new Vector3((polyStrip.Indexes[stripIndx + 1] + 1),
-											(polyStrip.Indexes[stripIndx] + 1),
-											(polyStrip.Indexes[stripIndx + 2] + 1));
-
-										if (set.UV != null)
-										{
-											int uv1 = (stripIndx + 1) + processedUVStripCount + 1;
-											int uv2 = (stripIndx) + processedUVStripCount + 1;
-											int uv3 = (stripIndx + 2) + processedUVStripCount + 1;
-
-											if (wroteNormals)
-											{
-												objstream.WriteLine("f {0}/{1}/{2} {3}/{4}/{5} {6}/{7}/{8}",
-													(int)newFace.X + totalVerts, uv1 + totalUVs, (int)newFace.X + totalNorms,
-													(int)newFace.Y + totalVerts, uv2 + totalUVs, (int)newFace.Y + totalNorms,
-													(int)newFace.Z + totalVerts, uv3 + totalUVs, (int)newFace.Z + totalNorms);
-											}
-											else
-											{
-												objstream.WriteLine("f {0}/{1} {2}/{3} {4}/{5}",
-													(int)newFace.X + totalVerts, uv1 + totalUVs,
-													(int)newFace.Y + totalVerts, uv2 + totalUVs,
-													(int)newFace.Z + totalVerts, uv3 + totalUVs);
-											}
-										}
-										else
-										{
-											if (wroteNormals)
-											{
-												objstream.WriteLine("f {0}//{1} {2}//{3} {4}//{5}",
-													(int)newFace.X + totalVerts, (int)newFace.X + totalNorms,
-													(int)newFace.Y + totalVerts, (int)newFace.Y + totalNorms,
-													(int)newFace.Z + totalVerts, (int)newFace.Z + totalNorms);
-											}
-											else
-											{
-												objstream.WriteLine("f {0} {1} {2}", (int)newFace.X + totalVerts, (int)newFace.Y + totalVerts, (int)newFace.Z + totalVerts);
-											}
-										}
-									}
-									else
-									{
-										Vector3 newFace = new Vector3((polyStrip.Indexes[stripIndx] + 1), (polyStrip.Indexes[stripIndx + 1] + 1), (polyStrip.Indexes[stripIndx + 2] + 1));
-
-										if (set.UV != null)
-										{
-											int uv1 = (stripIndx) + processedUVStripCount + 1;
-											int uv2 = stripIndx + 1 + processedUVStripCount + 1;
-											int uv3 = stripIndx + 2 + processedUVStripCount + 1;
-
-											if (wroteNormals)
-											{
-												objstream.WriteLine("f {0}/{1}/{2} {3}/{4}/{5} {6}/{7}/{8}",
-													(int)newFace.X + totalVerts, uv1 + totalUVs, (int)newFace.X + totalNorms,
-													(int)newFace.Y + totalVerts, uv2 + totalUVs, (int)newFace.Y + totalNorms,
-													(int)newFace.Z + totalVerts, uv3 + totalUVs, (int)newFace.Z + totalNorms);
-											}
-											else
-											{
-												objstream.WriteLine("f {0}/{1} {2}/{3} {4}/{5}",
-													(int)newFace.X + totalVerts, uv1 + totalUVs,
-													(int)newFace.Y + totalVerts, uv2 + totalUVs,
-													(int)newFace.Z + totalVerts, uv3 + totalUVs);
-											}
-										}
-										else
-										{
-											if (wroteNormals)
-											{
-												objstream.WriteLine("f {0}//{1} {2}//{3} {4}//{5}",
-													(int)newFace.X + totalVerts, (int)newFace.X + totalNorms,
-													(int)newFace.Y + totalVerts, (int)newFace.Y + totalNorms,
-													(int)newFace.Z + totalVerts, (int)newFace.Z + totalNorms);
-											}
-											else
-											{
-												objstream.WriteLine("f {0} {1} {2}", (int)newFace.X + totalVerts, (int)newFace.Y + totalVerts, (int)newFace.Z + totalVerts);
-											}
-										}
-									}
-
-									triangleWindReversed = !triangleWindReversed; // flip every other triangle or the output will be wrong
-								}
-
-								if (set.UV != null)
-								{
-									processedUVStripCount += polyStrip.Indexes.Length;
-									objstream.WriteLine("# processed UV strips this poly: {0}", processedUVStripCount);
-								}
-								break;
-
-							case Basic_PolyType.Triangles:
-								for (int faceVIndx = 0; faceVIndx < poly.Indexes.Length / 3; faceVIndx++)
-								{
-									Vector3 newFace = new Vector3((poly.Indexes[faceVIndx] + 1),
-										(poly.Indexes[faceVIndx + 1] + 1), (poly.Indexes[faceVIndx + 2] + 1));
-
-									if (set.UV != null)
-									{
-										int uv1 = (faceVIndx) + processedUVStripCount + 1;
-										int uv2 = faceVIndx + 1 + processedUVStripCount + 1;
-										int uv3 = faceVIndx + 2 + processedUVStripCount + 1;
-
-										if (wroteNormals)
-										{
-											objstream.WriteLine("f {0}/{1}/{2} {3}/{4}/{5} {6}/{7}/{8}",
-												(int)newFace.X + totalVerts, uv1 + totalUVs, (int)newFace.X + totalNorms,
-												(int)newFace.Y + totalVerts, uv2 + totalUVs, (int)newFace.Y + totalNorms,
-												(int)newFace.Z + totalVerts, uv3 + totalUVs, (int)newFace.Z + totalNorms);
-										}
-										else
-										{
-											objstream.WriteLine("f {0}/{1} {2}/{3} {4}/{5}",
-												(int)newFace.X + totalVerts, uv1 + totalUVs,
-												(int)newFace.Y + totalVerts, uv2 + totalUVs,
-												(int)newFace.Z + totalVerts, uv3 + totalUVs);
-										}
-									}
-									else
-									{
-										if (wroteNormals)
-										{
-											objstream.WriteLine("f {0}//{1} {2}//{3} {4}//{5}",
-												(int)newFace.X + totalVerts, (int)newFace.X + totalNorms,
-												(int)newFace.Y + totalVerts, (int)newFace.Y + totalNorms,
-												(int)newFace.Z + totalVerts, (int)newFace.Z + totalNorms);
-										}
-										else
-										{
-											objstream.WriteLine("f {0} {1} {2}", (int)newFace.X + totalVerts, (int)newFace.Y + totalVerts, (int)newFace.Z + totalVerts);
-										}
-									}
-
-									if (set.UV != null)
-									{
-										processedUVStripCount += 3;
-										objstream.WriteLine("# processed UV strips this poly: {0}", processedUVStripCount);
-									}
-								}
-								break;
-
-							case Basic_PolyType.Quads:
-								for (int faceVIndx = 0; faceVIndx < poly.Indexes.Length / 4; faceVIndx++)
-								{
-									Vector4 newFace = new Vector4((poly.Indexes[faceVIndx + 0] + 1),
-										(poly.Indexes[faceVIndx + 1] + 1),
-										(poly.Indexes[faceVIndx + 2] + 1),
-										(poly.Indexes[faceVIndx + 3] + 1));
-
-									if (set.UV != null)
-									{
-										int uv1 = faceVIndx + 0 + processedUVStripCount + 1; // +1's are because obj indeces always start at 1, not 0
-										int uv2 = faceVIndx + 1 + processedUVStripCount + 1;
-										int uv3 = faceVIndx + 2 + processedUVStripCount + 1;
-										int uv4 = faceVIndx + 3 + processedUVStripCount + 1;
-
-										if (wroteNormals)
-										{
-											objstream.WriteLine("f {0}/{1}/{2} {3}/{4}/{5} {6}/{7}/{8}",
-												(int)newFace.X + totalVerts, uv1 + totalUVs, (int)newFace.X + totalNorms,
-												(int)newFace.Y + totalVerts, uv2 + totalUVs, (int)newFace.Y + totalNorms,
-												(int)newFace.Z + totalVerts, uv3 + totalUVs, (int)newFace.Z + totalNorms);
-											objstream.WriteLine("f {0}/{1}/{2} {3}/{4}/{5} {6}/{7}/{8}",
-												(int)newFace.Z + totalVerts, uv3 + totalUVs, (int)newFace.Z + totalNorms,
-												(int)newFace.Y + totalVerts, uv2 + totalUVs, (int)newFace.Y + totalNorms,
-												(int)newFace.W + totalVerts, uv4 + totalUVs, (int)newFace.W + totalNorms);
-										}
-										else
-										{
-											objstream.WriteLine("f {0}/{1} {2}/{3} {4}/{5}",
-												(int)newFace.X + totalVerts, uv1 + totalUVs,
-												(int)newFace.Y + totalVerts, uv2 + totalUVs,
-												(int)newFace.Z + totalVerts, uv3 + totalUVs);
-											objstream.WriteLine("f {0}/{1} {2}/{3} {4}/{5}",
-												(int)newFace.Z + totalVerts, uv3 + totalUVs,
-												(int)newFace.Y + totalVerts, uv2 + totalUVs,
-												(int)newFace.W + totalVerts, uv4 + totalUVs);
-										}
-									}
-									else
-									{
-										if (wroteNormals)
-										{
-											objstream.WriteLine("f {0}//{1} {2}//{3} {4}//{5}",
-												(int)newFace.X + totalVerts, (int)newFace.X + totalNorms,
-												(int)newFace.Y + totalVerts, (int)newFace.Y + totalNorms,
-												(int)newFace.Z + totalVerts, (int)newFace.Z + totalNorms);
-											objstream.WriteLine("f {0}//{1} {2}//{3} {4}//{5}",
-												(int)newFace.Z + totalVerts, (int)newFace.Z + totalNorms,
-												(int)newFace.Y + totalVerts, (int)newFace.Y + totalNorms,
-												(int)newFace.W + totalVerts, (int)newFace.W + totalNorms);
-										}
-										else
-										{
-											objstream.WriteLine("f {0} {1} {2}", (int)newFace.X + totalVerts, (int)newFace.Y + totalVerts, (int)newFace.Z + totalVerts);
-											objstream.WriteLine("f {0} {1} {2}", (int)newFace.Z + totalVerts, (int)newFace.Y + totalVerts, (int)newFace.W + totalVerts);
-										}
-									}
-
-									if (set.UV != null)
-									{
-										processedUVStripCount += 4;
-										objstream.WriteLine("# processed UV strips this poly: {0}", processedUVStripCount);
-									}
-								}
-								break;
-
-							case Basic_PolyType.NPoly:
-								objstream.WriteLine("# Error in WriteObjFromBasicAttach() - NPoly not supported yet!");
-								continue;
-						}
-					}
-
-					if (set.UV != null)
-					{
-						totalUVs += set.UV.Length;
-					}
-
-					meshID++;
-				}
-				#endregion
-
-				objstream.WriteLine("");
-
-				// add totals
-				totalVerts += basicAttach.Vertex.Length;
-				totalNorms += basicAttach.Normal.Length;
-			}
-		}
-
-		/// <summary>
-		/// Writes an object model (chunk format) to the specified stream, in Alias-Wavefront *.OBJ format.
-		/// </summary>
-		/// <param name="objstream">stream representing a wavefront obj file to export to</param>
-		/// <param name="obj">Model to export.</param>
-		/// <param name="materialPrefix">idk</param>
-		/// <param name="transform">Used for calculating transforms.</param>
-		/// <param name="totalVerts">This keeps track of how many verts have been exported to the current file. This is necessary because *.obj vertex indeces are file-level, not object-level.</param>
-		/// <param name="totalNorms">This keeps track of how many vert normals have been exported to the current file. This is necessary because *.obj vertex normal indeces are file-level, not object-level.</param>
-		/// <param name="totalUVs">This keeps track of how many texture verts have been exported to the current file. This is necessary because *.obj textue vert indeces are file-level, not object-level.</param>
-		/// <param name="errorFlag">Set this to TRUE if you encounter an issue. The user will be alerted.</param>
-		private static void WriteObjFromChunkAttach(StreamWriter objstream, NJS_OBJECT obj, ref List<NJS_MATERIAL> materials, Matrix transform, ref int totalVerts, ref int totalNorms, ref int totalUVs, ref bool errorFlag)
-		{
-			// add obj writing here
-			if (obj.Attach != null)
-			{
-				ChunkAttach chunkAttach = (ChunkAttach)obj.Attach;
-
-				if ((chunkAttach.Vertex != null) && (chunkAttach.Poly != null))
-				{
-					int outputVertCount = 0;
-					int outputNormalCount = 0;
-
-					objstream.WriteLine("g " + obj.Name);
-
-					#region Outputting Verts and Normals
-					int vertexChunkCount = chunkAttach.Vertex.Count;
-					int polyChunkCount = chunkAttach.Poly.Count;
-
-					if (vertexChunkCount != 1)
-					{
-						errorFlag = true;
-						objstream.WriteLine("#A chunk model with more than one vertex chunk was found. Output is probably corrupt.");
-					}
-
-					for (int vc = 0; vc < vertexChunkCount; vc++)
-					{
-						for (int vIndx = 0; vIndx < chunkAttach.Vertex[vc].VertexCount; vIndx++)
-						{
-							if (chunkAttach.Vertex[vc].Flags == 0)
-							{
-								Vector3 inputVert = new Vector3(chunkAttach.Vertex[vc].Vertices[vIndx].X, chunkAttach.Vertex[vc].Vertices[vIndx].Y, chunkAttach.Vertex[vc].Vertices[vIndx].Z);
-								Vector3 outputVert = Vector3.TransformCoordinate(inputVert, transform);
-								objstream.WriteLine("v {0} {1} {2}", outputVert.X.ToString(NumberFormatInfo.InvariantInfo), outputVert.Y.ToString(NumberFormatInfo.InvariantInfo), outputVert.Z.ToString(NumberFormatInfo.InvariantInfo));
-
-								outputVertCount++;
-							}
-						}
-
-						if (chunkAttach.Vertex[vc].Normals.Count <= 0)
-						{
-							continue;
-						}
-
-						if (chunkAttach.Vertex[vc].Flags != 0)
-						{
-							continue;
-						}
-
-						foreach (Vertex v in chunkAttach.Vertex[vc].Normals)
-						{
-							objstream.WriteLine("vn {0} {1} {2}",
-								v.X.ToString(NumberFormatInfo.InvariantInfo), v.Y.ToString(NumberFormatInfo.InvariantInfo), v.Z.ToString(NumberFormatInfo.InvariantInfo));
-							outputNormalCount++;
-						}
-					}
-					#endregion
-
-					#region Outputting Polys
-					for (int pc = 0; pc < polyChunkCount; pc++)
-					{
-						PolyChunk polyChunk = chunkAttach.Poly[pc];
-
-						if (polyChunk is PolyChunkStrip chunkStrip)
-						{
-							for (int stripNum = 0; stripNum < chunkStrip.StripCount; stripNum++)
-							{
-								// output texture verts before use, if necessary
-								bool uvsAreValid = false;
-								if (chunkStrip.Strips[stripNum].UVs != null)
-								{
-									if (chunkStrip.Strips[stripNum].UVs.Length > 0)
-									{
-										uvsAreValid = true;
-										foreach (UV uv in chunkStrip.Strips[stripNum].UVs)
-										{
-											objstream.WriteLine("vt {0} {1}", uv.U.ToString(NumberFormatInfo.InvariantInfo), (-uv.V).ToString(NumberFormatInfo.InvariantInfo));
-										}
-									}
-								}
-
-								bool windingReversed = chunkStrip.Strips[stripNum].Reversed;
-								for (int currentStripIndx = 0; currentStripIndx < chunkStrip.Strips[stripNum].Indexes.Length - 2; currentStripIndx++)
-								{
-									if (windingReversed)
-									{
-										if (uvsAreValid)
-										{
-											// note to self - uvs.length will equal strip indeces length! They are directly linked, just like you remembered.
-											objstream.WriteLine("f {0}/{1} {2}/{3} {4}/{5}",
-												(chunkStrip.Strips[stripNum].Indexes[currentStripIndx + 1] + totalVerts) + 1, (currentStripIndx + 1 + totalUVs) + 1,
-												(chunkStrip.Strips[stripNum].Indexes[currentStripIndx] + totalVerts) + 1, (currentStripIndx + totalUVs) + 1,
-												(chunkStrip.Strips[stripNum].Indexes[currentStripIndx + 2] + totalVerts) + 1, (currentStripIndx + 2 + totalUVs) + 1);
-										}
-										else
-										{
-											objstream.WriteLine("f {0} {1} {2}",
-												(chunkStrip.Strips[stripNum].Indexes[currentStripIndx + 1] + totalVerts) + 1,
-												(chunkStrip.Strips[stripNum].Indexes[currentStripIndx] + totalVerts) + 1,
-												(chunkStrip.Strips[stripNum].Indexes[currentStripIndx + 2] + totalVerts) + 1);
-										}
-									}
-									else
-									{
-										if (uvsAreValid)
-										{
-											// note to self - uvs.length will equal strip indeces length! They are directly linked, just like you remembered.
-											objstream.WriteLine("f {0}/{1} {2}/{3} {4}/{5}",
-												(chunkStrip.Strips[stripNum].Indexes[currentStripIndx] + totalVerts) + 1, currentStripIndx + totalUVs + 1,
-												(chunkStrip.Strips[stripNum].Indexes[currentStripIndx + 1] + totalVerts) + 1, currentStripIndx + 1 + totalUVs + 1,
-												(chunkStrip.Strips[stripNum].Indexes[currentStripIndx + 2] + totalVerts) + 1, currentStripIndx + 2 + totalUVs + 1);
-										}
-										else
-										{
-											objstream.WriteLine("f {0} {1} {2}",
-												(chunkStrip.Strips[stripNum].Indexes[currentStripIndx] + totalVerts) + 1,
-												(chunkStrip.Strips[stripNum].Indexes[currentStripIndx + 1] + totalVerts) + 1,
-												(chunkStrip.Strips[stripNum].Indexes[currentStripIndx + 2] + totalVerts) + 1);
-										}
-									}
-
-									windingReversed = !windingReversed;
-								}
-
-								// increment output verts
-								if (uvsAreValid) totalUVs += chunkStrip.Strips[stripNum].UVs.Length;
-							}
-						}
-						else if (polyChunk is PolyChunkMaterial)
-						{
-							// no behavior defined yet.
-						}
-						else if (polyChunk is PolyChunkTinyTextureID chunkTexID)
-						{
-							//objstream.WriteLine("usemtl {0}_material_{1}", materialPrefix, chunkTexID.TextureID);
-							// no behavior defined yet
-						}
-					}
-					#endregion
-
-					totalVerts += outputVertCount;
-					totalNorms += outputNormalCount;
-				}
-				else
-				{
-					errorFlag = true;
-					objstream.WriteLine("#A chunk model with no vertex or no poly was found. Output is definitely corrupt.");
-				}
-			}
-		}
-
-		/// <summary>
-		/// Primary method for exporting models to Wavefront *.OBJ format. This will auto-detect the model type and send it to the proper export method.
-		/// </summary>
-		/// <param name="objstream">stream representing a wavefront obj file to export to</param>
-		/// <param name="obj">Model to export.</param>
-		/// <param name="materialPrefix">used to prevent name collisions if mixing/matching outputs.</param>
-		/// <param name="transform">Used for calculating transforms.</param>
-		/// <param name="totalVerts">This keeps track of how many verts have been exported to the current file. This is necessary because *.obj vertex indeces are file-level, not object-level.</param>
-		/// <param name="totalNorms">This keeps track of how many vert normals have been exported to the current file. This is necessary because *.obj vertex normal indeces are file-level, not object-level.</param>
-		/// <param name="totalUVs">This keeps track of how many texture verts have been exported to the current file. This is necessary because *.obj textue vert indeces are file-level, not object-level.</param>
-		/// <param name="errorFlag">Set this to TRUE if you encounter an issue. The user will be alerted.</param>
-		public static void WriteModelAsObj(StreamWriter objstream, NJS_OBJECT obj, ref List<NJS_MATERIAL> materials, MatrixStack transform, ref int totalVerts, ref int totalNorms, ref int totalUVs, ref bool errorFlag)
-		{
-			transform.Push();
-			obj.ProcessTransforms(transform);
-			if (obj.Attach is BasicAttach)
-				WriteObjFromBasicAttach(objstream, obj, ref materials, transform.Top, ref totalVerts, ref totalNorms, ref totalUVs);
-			else if (obj.Attach is ChunkAttach)
-				WriteObjFromChunkAttach(objstream, obj, ref materials, transform.Top, ref totalVerts, ref totalNorms, ref totalUVs, ref errorFlag);
-			foreach (NJS_OBJECT child in obj.Children)
-				WriteModelAsObj(objstream, child, ref materials, transform, ref totalVerts, ref totalNorms, ref totalUVs, ref errorFlag);
-			transform.Pop();
-		}
-
-		/// <summary>
-		/// Primary method for exporting models to Wavefront *.OBJ format. This will auto-detect the model type and send it to the proper export method.
-		/// </summary>
-		/// <param name="objstream">stream representing a wavefront obj file to export to</param>
-		/// <param name="obj">Model to export.</param>
-		/// <param name="materialPrefix">used to prevent name collisions if mixing/matching outputs.</param>
-		/// <param name="errorFlag">Set this to TRUE if you encounter an issue. The user will be alerted.</param>
-		public static void WriteSingleModelAsObj(StreamWriter objstream, NJS_OBJECT obj, ref List<NJS_MATERIAL> materials, ref bool errorFlag)
-		{
-			int v = 0, n = 0, u = 0;
-			if (obj.Attach is BasicAttach)
-				WriteObjFromBasicAttach(objstream, obj, ref materials, Matrix.Identity, ref v, ref n, ref u);
-			else if (obj.Attach is ChunkAttach)
-				WriteObjFromChunkAttach(objstream, obj, ref materials, Matrix.Identity, ref v, ref n, ref u, ref errorFlag);
-		}
 
 		public static float Distance(this Vector3 vectorA, Vector3 vectorB)
 		{

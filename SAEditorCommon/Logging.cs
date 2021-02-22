@@ -50,22 +50,34 @@ namespace SonicRetro.SAModel.SAEditorCommon
 		/// </summary>
 		public void WriteLog()
 		{
-			File.AppendAllLines(file, LogQueue);
-			LogQueue.Clear();
+			try
+			{
+				File.AppendAllLines(file, LogQueue);
+				LogQueue.Clear();
+			}
+			catch { }
 		}
 		/// <summary>
 		/// Clears the log file.
 		/// </summary>
 		public void ClearLogFile()
 		{
-			File.WriteAllText(file, "");
+			try
+			{
+				File.WriteAllText(file, "");
+			}
+			catch { }
 		}
 		/// <summary>
 		/// Deletes the log file.
 		/// </summary>
 		public void DeleteLogFile()
 		{
-			File.Delete(file);
+			try
+			{
+				File.Delete(file);
+			}
+			catch { }
 		}
 		/// <summary>
 		/// Returns the log queue as a string.
@@ -80,7 +92,7 @@ namespace SonicRetro.SAModel.SAEditorCommon
 	{
 		public Dictionary<string, int> MessageList { get; set; }
 		private List<OSDItem> OSDItems { get; set; }
-		Sprite textSprite;
+		public Sprite textSprite;
 		public Device d3ddevice;
 		public bool timer_freeze;
 		public RawColorBGRA logcolor;

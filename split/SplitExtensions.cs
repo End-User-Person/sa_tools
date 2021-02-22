@@ -45,9 +45,45 @@ namespace Split
 				case "-ld":
 					SplitLD(args);
 					return true;
+				case "-lc":
+					SplitLC(args);
+					return true;
+				//case "-defconv":
+					//SplitDefConv(args);
+					//return true;
 				default:
 					return false;
 			}
+		}
+
+		// Merges two split INI files by adding new addresses from the second file and keeping filenames for existing addresses from the first file
+		static void SplitLC(string[] args)
+		{
+			IniData inidata1 = IniSerializer.Deserialize<IniData>(args[0]);
+			IniData inidata2 = IniSerializer.Deserialize<IniData>(args[1]);
+			IniData inidata3 = new IniData();
+			inidata3.Compressed = inidata1.Compressed;
+			inidata3.BigEndian = inidata1.BigEndian;
+			inidata3.DataFilename = inidata1.DataFilename;
+			inidata3.ImageBase = inidata1.ImageBase;
+			inidata3.Reverse = inidata1.Reverse;
+			inidata3.Files = new Dictionary<string, SA_Tools.FileInfo>();
+			foreach (var file in inidata1.Files)
+			{
+				if (file.Value.Type == "action")
+				{
+					continue;
+				}
+				else
+					if (!inidata3.Files.ContainsKey(file.Value.Address.ToString("X8"))) inidata3.Files.Add(file.Value.Address.ToString("X8"), file.Value);
+			}
+			foreach (var file in inidata2.Files)
+			{
+				if (file.Value.Type == "action") continue;
+				else
+					if (!inidata3.Files.ContainsKey(file.Value.Address.ToString("X8"))) inidata3.Files.Add(file.Value.Address.ToString("X8"), file.Value);
+			}
+			IniSerializer.Serialize(inidata3, Path.GetFileNameWithoutExtension(args[0]) + "_merged.ini");
 		}
 
 		// Compares two files and returns the difference in the number of bytes
@@ -78,11 +114,25 @@ namespace Split
 			string[] list = File.ReadAllLines(listfilename);
 			int n = 0;
 			Dictionary<int, string> filenames = new Dictionary<int, string>();
+			Dictionary<string, SA_Tools.FileInfo> fileinfo_new = new Dictionary<string, SA_Tools.FileInfo>();
 			foreach (KeyValuePair<string, SA_Tools.FileInfo> fileinfo in inifile.Files)
 			{
-				Console.WriteLine("{0}", list[n]);
-				fileinfo.Value.Filename = list[n];
-				filenames.Add(fileinfo.Value.Address, list[n]);
+				if (list.Length <= n)
+				{
+					Console.WriteLine("Item outside of bounds!");
+					continue;
+				}
+				if (!((list[n].Length >= 6 && list[n].Substring(0, 6) == "DELETE")))
+				{
+					Console.WriteLine("{0}", list[n]);
+					fileinfo.Value.Filename = list[n];
+					filenames.Add(fileinfo.Value.Address, list[n]);
+					fileinfo_new.Add(fileinfo.Value.Address.ToString("X8"), fileinfo.Value);
+				}
+				else
+				{
+					Console.WriteLine("Deleted: {0}", fileinfo.Value.Filename);
+				}
 				n++;
 			}
 			// Relink animations
@@ -101,6 +151,7 @@ namespace Split
 					fileinfo.Value.CustomProperties["animations"] = string.Join(",", anims);
 				}
 			}
+			inifile.Files = fileinfo_new;
 			IniSerializer.Serialize(inifile, Path.GetFileNameWithoutExtension(inifilename) + "_replaced.ini");
 		}
 
@@ -549,5 +600,37 @@ namespace Split
 			}
 			IniSerializer.Serialize(newinifile, Path.GetFileNameWithoutExtension(listname) + ".ini");
 		}
+
+		// Reads objdefs.ini and a split INI and tries to fill model filenames with models from the split INI, based on the Draw field in objdefs.ini
+		// Requires a now-deleted Draw field in ObjectData
+		// Needs the SAEditorCommon.SETEditing dependency
+		/*
+		static void SplitDefConv(string[] args)
+		{
+			Dictionary<string, ObjectData> objdefini = IniSerializer.Deserialize<Dictionary<string, ObjectData>>(args[0]);
+			IniData splitdata = IniSerializer.Deserialize<IniData>(args[1]);
+			foreach (var data in objdefini)
+			{
+				if (data.Value.Draw != null && data.Value.Draw.Length > 3)
+				{
+					string[] drawsplit = data.Value.Draw.Split(',');
+					string type = drawsplit[1];
+					string addr = drawsplit[2];
+					if (type == "exe")
+					{
+						foreach (var splitinfo in splitdata.Files)
+						{
+							if (splitinfo.Value.Address == int.Parse(addr, System.Globalization.NumberStyles.AllowHexSpecifier))
+							{
+								Console.WriteLine("Draw: for {0} is {1}", data.Value.Name, splitinfo.Value.Address.ToString("X8"));
+								data.Value.Model = splitinfo.Value.Filename;
+							}
+						}
+					}
+				}
+			}
+			IniSerializer.Serialize(objdefini, "uck.ini");
+		}
+		*/
 	}
 }

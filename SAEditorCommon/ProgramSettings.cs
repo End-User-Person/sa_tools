@@ -52,7 +52,7 @@ namespace SonicRetro.SAModel.SAEditorCommon
 			[DefaultValue(true)]
 			public bool ShowWelcomeScreen { get; set; }
 			[DefaultValue(false)]
-			public bool DisableModelLibrary { get; set; } // Not implemented yet
+			public bool DisableModelLibrary { get; set; }
 			[DefaultValue(0)]
 			public int LibrarySplitterPosition { get; set; }
 			[DefaultValue(0)]
@@ -65,6 +65,8 @@ namespace SonicRetro.SAModel.SAEditorCommon
 			public float DrawDistance_SET { get; set; }
 			[DefaultValue(6000.0f)]
 			public float DrawDistance_Geometry { get; set; }
+			public int CameraModifier { get; set; }
+			public bool AlternativeCamera { get; set; }
 			public Settings_SADXLVL2()
 			{
 				ShowWelcomeScreen = true;
@@ -75,6 +77,8 @@ namespace SonicRetro.SAModel.SAEditorCommon
 				DrawDistance_General = 10000;
 				DrawDistance_SET = 6000;
 				DrawDistance_Geometry = 6000;
+				CameraModifier = 1;
+				AlternativeCamera = false;
 			}
 		}
 
@@ -82,12 +86,16 @@ namespace SonicRetro.SAModel.SAEditorCommon
 		{
 			[DefaultValue(true)]
 			public bool ShowWelcomeScreen { get; set; }
-			//[DefaultValue(10000.0f)]
-			//public float DrawDistance_General { get; set; }
+			[DefaultValue(10000.0f)]
+			public float DrawDistance_General { get; set; }
+			public int CameraModifier { get; set; }
+			public bool AlternativeCamera { get; set; }
 			public Settings_SALVL()
 			{
 				ShowWelcomeScreen = true;
-				//DrawDistance_General=10000.0f;
+				DrawDistance_General = 10000.0f;
+				CameraModifier = 1;
+				AlternativeCamera = false;
 			}
 		}
 
@@ -95,15 +103,38 @@ namespace SonicRetro.SAModel.SAEditorCommon
 		{
 			[DefaultValue(true)]
 			public bool ShowWelcomeScreen { get; set; }
+
 			[DefaultValue(1.125f)]
 			public float CamMoveSpeed { get; set; }
-			//[DefaultValue(10000.0f)]
-			//public float DrawDistance_General { get; set; }
+
+			[DefaultValue(10000.0f)]
+			public float DrawDistance { get; set; }
+
+			[DefaultValue(1)]
+			public int CameraModifier { get; set; }
+
+			[DefaultValue(false)]
+			public bool AlternativeCamera { get; set; }
+
+			[DefaultValue(0.0f)]
+			public float BackLightAmbientR { get; set; }
+
+			[DefaultValue(0.0f)]
+			public float BackLightAmbientG { get; set; }
+
+			[DefaultValue(0.0f)]
+			public float BackLightAmbientB { get; set; }
+
 			public Settings_SAMDL()
 			{
 				ShowWelcomeScreen = true;
 				CamMoveSpeed = 1.125f;
-				//DrawDistance_General=10000.0f;
+				DrawDistance = 10000.0f;
+				CameraModifier = 1;
+				AlternativeCamera = false;
+				BackLightAmbientR = 0.0f;
+				BackLightAmbientG = 0.0f;
+				BackLightAmbientB = 0.0f;
 			}
 
 		}

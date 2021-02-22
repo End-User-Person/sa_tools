@@ -22,8 +22,19 @@ namespace SA2EventViewer
 		public MainForm()
 		{
 			InitializeComponent();
+			AddMouseMoveHandler(this);
 			Application.ThreadException += Application_ThreadException;
 			AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+		}
+
+		private void AddMouseMoveHandler(Control c)
+		{
+			c.MouseMove += Panel1_MouseMove;
+			if (c.Controls.Count > 0)
+			{
+				foreach (Control ct in c.Controls)
+					AddMouseMoveHandler(ct);
+			}
 		}
 
 		void Application_ThreadException(object sender, System.Threading.ThreadExceptionEventArgs e)
@@ -87,20 +98,6 @@ namespace SA2EventViewer
 			EditorOptions.Initialize(d3ddevice);
 			EditorOptions.OverrideLighting = true;
 			EditorOptions.RenderDrawDistance = 10000;
-			optionsEditor = new EditorOptionsEditor(cam, false, false);
-			optionsEditor.FormUpdated += optionsEditor_FormUpdated;
-			optionsEditor.CustomizeKeybindsCommand += CustomizeControls;
-			optionsEditor.ResetDefaultKeybindsCommand += () =>
-			{
-				actionList.ActionKeyMappings.Clear();
-
-				foreach (ActionKeyMapping keymapping in DefaultActionList.DefaultActionMapping)
-				{
-					actionList.ActionKeyMappings.Add(keymapping);
-				}
-
-				actionInputCollector.SetActions(actionList.ActionKeyMappings.ToArray());
-			};
 
 			actionList = ActionMappingList.Load(Path.Combine(Application.StartupPath, "keybinds", "SA2EventViewer.ini"),
 				DefaultActionList.DefaultActionMapping);
@@ -110,6 +107,10 @@ namespace SA2EventViewer
 			actionInputCollector.OnActionStart += ActionInputCollector_OnActionStart;
 			actionInputCollector.OnActionRelease += ActionInputCollector_OnActionRelease;
 
+			optionsEditor = new EditorOptionsEditor(cam, actionList.ActionKeyMappings.ToArray(), DefaultActionList.DefaultActionMapping, false, false);
+			optionsEditor.FormUpdated += optionsEditor_FormUpdated;
+			optionsEditor.FormUpdatedKeys += optionsEditor_FormUpdatedKeys;
+			
 			cammodel = new ModelFile(Properties.Resources.camera).Model;
 			cammodel.Attach.ProcessVertexData();
 			cammesh = cammodel.Attach.CreateD3DMesh();
@@ -126,16 +127,20 @@ namespace SA2EventViewer
 				Filter = "Event Files|e????.prs|All Files|*.*"
 			})
 				if (a.ShowDialog(this) == DialogResult.OK)
+				{
+					timer1.Stop();
+					timer1.Enabled = false;
+					scenenum = 0;
+					decframe = 0;
+					animframe = -1;
 					LoadFile(a.FileName);
+				}
 		}
 
 		private void LoadFile(string filename)
 		{
 			loaded = false;
 			Environment.CurrentDirectory = Path.GetDirectoryName(filename);
-			timer1.Stop();
-			scenenum = 0;
-			animframe = -1;
 			@event = new Event(filename);
 			meshes = new List<List<Mesh[]>>();
 			bigmeshes = new List<Mesh[]>();
@@ -320,7 +325,7 @@ namespace SA2EventViewer
 				}
 			}
 
-			RenderInfo.Draw(renderList, d3ddevice, cam);
+			RenderInfo.Draw(renderList, d3ddevice, cam, true);
 			d3ddevice.EndScene(); //all drawings before this line
 			d3ddevice.Present();
 		}
@@ -468,30 +473,6 @@ namespace SA2EventViewer
 		#endregion
 
 		#region Keyboard/Mouse Methods
-		void CustomizeControls()
-		{
-			ActionKeybindEditor editor = new ActionKeybindEditor(actionList.ActionKeyMappings.ToArray());
-
-			editor.ShowDialog();
-
-			// copy all our mappings back
-			actionList.ActionKeyMappings.Clear();
-
-			ActionKeyMapping[] newMappings = editor.GetActionkeyMappings();
-			foreach (ActionKeyMapping mapping in newMappings) actionList.ActionKeyMappings.Add(mapping);
-
-			actionInputCollector.SetActions(newMappings);
-
-			// save our controls
-			string saveControlsPath = Path.Combine(Application.StartupPath, "keybinds", "SA2EventViewer.ini");
-
-			actionList.Save(saveControlsPath);
-
-			this.BringToFront();
-			optionsEditor.BringToFront();
-			optionsEditor.Focus();
-			//this.panel1.Focus();
-		}
 
 		private void ActionInputCollector_OnActionRelease(ActionInputCollector sender, string actionName)
 		{
@@ -687,116 +668,21 @@ namespace SA2EventViewer
 			actionInputCollector.KeyUp(e.KeyCode);
 		}
 
-		private void panel1_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
-		{
-			/*switch (e.KeyCode)
-			{
-				case Keys.Down:
-				case Keys.Left:
-				case Keys.Right:
-				case Keys.Up:
-					e.IsInputKey = true;
-					break;
-			}*/
-		}
-
-		Point mouseLast;
 		private void Panel1_MouseMove(object sender, MouseEventArgs e)
 		{
 			if (!loaded) return;
-
-			#region Motion Handling
-			Point mouseEvent = e.Location;
-			if (mouseLast == Point.Empty)
-			{
-				mouseLast = mouseEvent;
-				return;
-			}
-
-			bool mouseWrapScreen = true;
-			ushort mouseWrapThreshold = 2;
-
-			Point mouseDelta = mouseEvent - (Size)mouseLast;
-			bool performedWrap = false;
-
-			if (e.Button != MouseButtons.None)
+			bool mouseWrapScreen = false;
+			int camresult = 0;
+			if (!eventcamera || animframe == -1)
 			{
 				System.Drawing.Rectangle mouseBounds = (mouseWrapScreen) ? Screen.GetBounds(ClientRectangle) : panel1.RectangleToScreen(panel1.Bounds);
-
-				if (Cursor.Position.X < (mouseBounds.Left + mouseWrapThreshold))
-				{
-					Cursor.Position = new Point(mouseBounds.Right - mouseWrapThreshold, Cursor.Position.Y);
-					mouseEvent = new Point(mouseEvent.X + mouseBounds.Width - mouseWrapThreshold, mouseEvent.Y);
-					performedWrap = true;
-				}
-				else if (Cursor.Position.X > (mouseBounds.Right - mouseWrapThreshold))
-				{
-					Cursor.Position = new Point(mouseBounds.Left + mouseWrapThreshold, Cursor.Position.Y);
-					mouseEvent = new Point(mouseEvent.X - mouseBounds.Width + mouseWrapThreshold, mouseEvent.Y);
-					performedWrap = true;
-				}
-				if (Cursor.Position.Y < (mouseBounds.Top + mouseWrapThreshold))
-				{
-					Cursor.Position = new Point(Cursor.Position.X, mouseBounds.Bottom - mouseWrapThreshold);
-					mouseEvent = new Point(mouseEvent.X, mouseEvent.Y + mouseBounds.Height - mouseWrapThreshold);
-					performedWrap = true;
-				}
-				else if (Cursor.Position.Y > (mouseBounds.Bottom - mouseWrapThreshold))
-				{
-					Cursor.Position = new Point(Cursor.Position.X, mouseBounds.Top + mouseWrapThreshold);
-					mouseEvent = new Point(mouseEvent.X, mouseEvent.Y - mouseBounds.Height + mouseWrapThreshold);
-					performedWrap = true;
-				}
+				camresult = cam.UpdateCamera(new Point(Cursor.Position.X, Cursor.Position.Y), mouseBounds, lookKeyDown, zoomKeyDown, cameraKeyDown);
 			}
-			#endregion
-
-			if (cameraKeyDown && (!eventcamera || animframe == -1))
+			if (camresult >= 2 && selectedObject != null) propertyGrid1.Refresh();
+			if (camresult >= 1)
 			{
-				// all cam controls are now bound to the middle mouse button
-				if (cam.mode == 0)
-				{
-					if (zoomKeyDown)
-					{
-						cam.Position += cam.Look * (mouseDelta.Y * cam.MoveSpeed);
-					}
-					else if (lookKeyDown)
-					{
-						cam.Yaw = unchecked((ushort)(cam.Yaw - mouseDelta.X * 0x10));
-						cam.Pitch = unchecked((ushort)(cam.Pitch - mouseDelta.Y * 0x10));
-					}
-					else if (!lookKeyDown && !zoomKeyDown) // pan
-					{
-						cam.Position += cam.Up * (mouseDelta.Y * cam.MoveSpeed);
-						cam.Position += cam.Right * (mouseDelta.X * cam.MoveSpeed) * -1;
-					}
-				}
-				else if (cam.mode == 1)
-				{
-					if (zoomKeyDown)
-					{
-						cam.Distance += (mouseDelta.Y * cam.MoveSpeed) * 3;
-					}
-					else if (lookKeyDown)
-					{
-						cam.Yaw = unchecked((ushort)(cam.Yaw - mouseDelta.X * 0x10));
-						cam.Pitch = unchecked((ushort)(cam.Pitch - mouseDelta.Y * 0x10));
-					}
-					else if (!lookKeyDown && !zoomKeyDown) // pan
-					{
-						cam.FocalPoint += cam.Up * (mouseDelta.Y * cam.MoveSpeed);
-						cam.FocalPoint += cam.Right * (mouseDelta.X * cam.MoveSpeed) * -1;
-					}
-				}
-
 				UpdateWeightedModels();
 				DrawEntireModel();
-			}
-
-			if (performedWrap || Math.Abs(mouseDelta.X / 2) * cam.MoveSpeed > 0 || Math.Abs(mouseDelta.Y / 2) * cam.MoveSpeed > 0)
-			{
-				mouseLast = mouseEvent;
-				if (e.Button != MouseButtons.None && selectedObject != null) propertyGrid1.Refresh();
-
 			}
 		}
 
@@ -935,6 +821,20 @@ namespace SA2EventViewer
 			DrawEntireModel();
 		}
 
+		void optionsEditor_FormUpdatedKeys()
+		{
+			// Keybinds
+			actionList.ActionKeyMappings.Clear();
+			ActionKeyMapping[] newMappings = optionsEditor.GetActionkeyMappings();
+			foreach (ActionKeyMapping mapping in newMappings) 
+				actionList.ActionKeyMappings.Add(mapping);
+			actionInputCollector.SetActions(newMappings);
+			string saveControlsPath = Path.Combine(Application.StartupPath, "keybinds", "SA2EventViewer.ini");
+			actionList.Save(saveControlsPath);
+			// Other settings
+			optionsEditor_FormUpdated();
+		}
+
 		private void showCameraToolStripMenuItem_Click(object sender, EventArgs e)
 		{
 			DrawEntireModel();
@@ -960,6 +860,11 @@ namespace SA2EventViewer
 					}
 					ModelFile.CreateFile(dlg.FileName, selectedObject.Model, anims.ToArray(), null, null, null, ModelFormat.Chunk);
 				}
+		}
+
+		private void MainForm_Deactivate(object sender, EventArgs e)
+		{
+			if (actionInputCollector != null) actionInputCollector.ReleaseKeys();
 		}
 	}
 }

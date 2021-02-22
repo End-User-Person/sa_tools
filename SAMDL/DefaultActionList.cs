@@ -89,20 +89,20 @@ namespace SonicRetro.SAModel.SAMDL
 			new ActionKeyMapping()
 			{
 				Name = "Camera Move",
-				MainKey = Keys.MButton,
+				MainKey = Keys.ShiftKey,
 				AltKey = Keys.None,
 				FireType = ActionFireType.OnHold,
 				Description = "Press to move the camera. Use rotate & zoom buttons to change behavior.",
 				IsSearchable = true,
-				Modifiers = Keys.None,
+				Modifiers = Keys.MButton,
 				Synonyms = new string[] { "Pan", "Scroll", "Dolly" }
 			},
 			new ActionKeyMapping()
 			{
 				Name = "Camera Zoom",
-				MainKey = Keys.Control,
+				MainKey = Keys.ControlKey,
 				AltKey = Keys.None,
-				Modifiers = Keys.None,
+				Modifiers = Keys.MButton,
 				Description = "Combine with Camera Move to zoom the camera.",
 				FireType = ActionFireType.OnHold,
 				IsSearchable = true,
@@ -111,7 +111,7 @@ namespace SonicRetro.SAModel.SAMDL
 			new ActionKeyMapping()
 			{
 				Name = "Camera Look",
-				MainKey = Keys.ShiftKey,
+				MainKey = Keys.MButton,
 				AltKey = Keys.None,
 				Description = "Combine with Camera Move to mouselook the camera.",
 				FireType = ActionFireType.OnHold,
@@ -201,17 +201,31 @@ namespace SonicRetro.SAModel.SAMDL
 			},
 			#endregion
 
+			#region Lighting hotkeys
 			new ActionKeyMapping()
 			{
-				Name = "Hotkey Search",
-				MainKey = Keys.Space,
+				Name = "Brighten Ambient",
+				MainKey = Keys.Home,
 				AltKey = Keys.None,
-				Description = "Search for hotkeys",
+				Description = "Make ambient lighting brighter (back light)",
 				FireType = ActionFireType.OnPress,
 				IsSearchable = true,
-				Modifiers = Keys.Control,
-				Synonyms = new string[] { "shortcut", "keybind" }
-			}
+				Modifiers = Keys.None,
+				Synonyms = new string[] { }
+			},
+			new ActionKeyMapping()
+			{
+				Name = "Darken Ambient",
+				MainKey = Keys.End,
+				AltKey = Keys.None,
+				Description = "Make ambient lighting darker (back light)",
+				FireType = ActionFireType.OnPress,
+				IsSearchable = true,
+				Modifiers = Keys.None,
+				Synonyms = new string[] { }
+			},
+			#endregion
+
 		};
 
 		public static ActionKeyMapping[] DefaultActionMapping { get { return defaultActionMapping; } }
