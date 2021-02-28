@@ -329,13 +329,13 @@ namespace SA_Tools.SAArc
 					if (info.Model != null)
 					{
 						if (labels.ContainsKeySafer(info.Model))
-							ByteConverter.GetBytes(labels[info.Model]).CopyTo(fc, ptr2);
+							ByteConverter.GetBytes(labels[info.Model]).CopyTo(fc, ptr4);
 						if (labels.ContainsKeySafer(info.Anims))
-							ByteConverter.GetBytes(labels[info.Anims]).CopyTo(fc, ptr2 + 4);
+							ByteConverter.GetBytes(labels[info.Anims]).CopyTo(fc, ptr4 + 4);
 						if (labels.ContainsKeySafer(info.ShapeMotions))
-							ByteConverter.GetBytes(labels[info.ShapeMotions]).CopyTo(fc, ptr2 + 8);
+							ByteConverter.GetBytes(labels[info.ShapeMotions]).CopyTo(fc, ptr4 + 8);
 					}
-					ptr += 0xC;
+					ptr4 += 0xC;
 				}
 			ptr = fc.GetPointer(0x1C, key);
 			if (ptr != 0 && labels.ContainsKeySafer(ini.RBodyAnims))
