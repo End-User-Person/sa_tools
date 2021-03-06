@@ -10,10 +10,10 @@ namespace SA_Tools.SAArc
 {
 	public static class sa2MiniEvent
 	{
-		static readonly string[] charbody = { "Head", "Mouth", "Left Hand", "Right Hand"};
+		static readonly string[] charbody = { "Head", "Mouth", "LHand", "RHand"};
 		static List<string> nodenames = new List<string>();
-		static Dictionary<string, ModelInfo> modelfiles = new Dictionary<string, ModelInfo>();
-		static Dictionary<string, MotionInfo> motionfiles = new Dictionary<string, MotionInfo>();
+		static Dictionary<string, MEModelInfo> modelfiles = new Dictionary<string, MEModelInfo>();
+		static Dictionary<string, MEMotionInfo> motionfiles = new Dictionary<string, MEMotionInfo>();
 
 		public static void Split(string filename)
 		{
@@ -48,8 +48,9 @@ namespace SA_Tools.SAArc
 			int ptr = fc.GetPointer(8, key);
 			if (ptr != 0)
 			{
+				Console.WriteLine("Sonic is in this Mini-Event");
 				ini.SBodyAnims = GetMotion(fc, ptr, key, $"Sonic\\Body.saanim", motions, 62);
-				for (int i = 0; i < 4; i++)
+				for (int i = 0; i < 1; i++)
 				{
 					string upnam = charbody[i];
 					string part = upnam;
@@ -69,29 +70,28 @@ namespace SA_Tools.SAArc
 							break;
 					}
 					MiniEventChars data = new MiniEventChars();
-						int ptr2 = fc.GetPointer(ptr + 4, key);
-						if (ptr2 != 0)
-							data.Model = GetModel(fc, ptr2, key, $"Sonic\\{part}.sa2mdl");
-						if (data.Model != null)
-						{
-							data.Anims = GetMotion(fc, ptr2 + 4, key, $"Sonic\\{part}.saanim", motions, modelfiles[data.Model].Model.CountAnimated());
-							if (data.Anims != null)
-								modelfiles[data.Model].Motions.Add(motionfiles[data.Anims].Filename);
-							data.ShapeMotions = GetMotion(fc, ptr2 + 8, key, $"Sonic\\{part}Shape.saanim", motions, modelfiles[data.Model].Model.CountMorph());
-							if (data.ShapeMotions != null)
-								modelfiles[data.Model].Motions.Add(motionfiles[data.ShapeMotions].Filename);
-						}
+					int ptr2 = fc.GetPointer(ptr + 4, key);
+					if (ptr2 != 0)
+						data.Part = GetModel(fc, ptr + 4, key, $"Sonic\\{part}.sa2mdl");
+					if (data.Part != null)
+					{
+						data.Anims = GetMotion(fc, ptr + 8, key, $"Sonic\\{part}.saanim", motions, modelfiles[data.Part].Model.CountAnimated());
+						if (data.Anims != null)
+							modelfiles[data.Part].Motions.Add(motionfiles[data.Anims].Filename);
+						data.ShapeMotions = GetMotion(fc, ptr + 0xC, key, $"Sonic\\{part}Shape.saanim", motions, modelfiles[data.Part].Model.CountMorph());
+						if (data.ShapeMotions != null)
+							modelfiles[data.Part].Motions.Add(motionfiles[data.ShapeMotions].Filename);
+					}
 					ini.Sonic.Add(data);
-					ptr += 0xC;
+					ptr2 += 0xC;
 				}
-				}
-			else
-				Console.WriteLine("Sonic is not in this Mini-Event");
+			}
 			ptr = fc.GetPointer(0xC, key);
 			if (ptr != 0)
-				{
+			{
+				Console.WriteLine("Shadow is in this Mini-Event");
 				ini.ShBodyAnims = GetMotion(fc, ptr, key, $"Shadow\\Body.saanim", motions, 62);
-				for (int i = 0; i < 4; i++)
+				for (int i = 0; i < 3; i++)
 					{
 						string upnam = charbody[i];
 						string part = upnam;
@@ -113,26 +113,25 @@ namespace SA_Tools.SAArc
 						MiniEventChars data = new MiniEventChars();
 							int ptr2 = fc.GetPointer(ptr + 4, key);
 							if (ptr2 != 0)
-								data.Model = GetModel(fc, ptr2, key, $"Shadow\\{part}.sa2mdl");
-							if (data.Model != null)
+								data.Part = GetModel(fc, ptr + 4, key, $"Shadow\\{part}.sa2mdl");
+							if (data.Part != null)
 							{
-								data.Anims = GetMotion(fc, ptr2 + 4, key, $"Shadow\\{part}.saanim", motions, modelfiles[data.Model].Model.CountAnimated());
+								data.Anims = GetMotion(fc, ptr + 8, key, $"Shadow\\{part}.saanim", motions, modelfiles[data.Part].Model.CountAnimated());
 								if (data.Anims != null)
-									modelfiles[data.Model].Motions.Add(motionfiles[data.Anims].Filename);
-								data.ShapeMotions = GetMotion(fc, ptr2 + 8, key, $"Shadow\\{part}Shape.saanim", motions, modelfiles[data.Model].Model.CountMorph());
+									modelfiles[data.Part].Motions.Add(motionfiles[data.Anims].Filename);
+								data.ShapeMotions = GetMotion(fc, ptr + 0xC, key, $"Shadow\\{part}Shape.saanim", motions, modelfiles[data.Part].Model.CountMorph());
 								if (data.ShapeMotions != null)
-									modelfiles[data.Model].Motions.Add(motionfiles[data.ShapeMotions].Filename);
+									modelfiles[data.Part].Motions.Add(motionfiles[data.ShapeMotions].Filename);
 
 							}
 					ini.Shadow.Add(data);
-					ptr += 0xC;
+					ptr2 += 0xC;
 					}
 				}
-				else
-					Console.WriteLine("Shadow is not in this Mini-Event");
 			ptr = fc.GetPointer(0x18, key);
 			if (ptr != 0)
 			{
+				Console.WriteLine("Knuckles is in this Mini-Event");
 				ini.KBodyAnims = GetMotion(fc, ptr, key, $"Knuckles\\Body.saanim", motions, 62);
 				for (int i = 0; i < 4; i++)
 				{
@@ -156,26 +155,25 @@ namespace SA_Tools.SAArc
 					MiniEventChars data = new MiniEventChars();
 					int ptr2 = fc.GetPointer(ptr + 4, key);
 					if (ptr2 != 0)
-						data.Model = GetModel(fc, ptr2, key, $"Knuckles\\{part}.sa2mdl");
-					if (data.Model != null)
+						data.Part = GetModel(fc, ptr + 4, key, $"Knuckles\\{part}.sa2mdl");
+					if (data.Part != null)
 					{
-						data.Anims = GetMotion(fc, ptr2 + 4, key, $"Knuckles\\{part}.saanim", motions, modelfiles[data.Model].Model.CountAnimated());
+						data.Anims = GetMotion(fc, ptr + 8, key, $"Knuckles\\{part}.saanim", motions, modelfiles[data.Part].Model.CountAnimated());
 						if (data.Anims != null)
-							modelfiles[data.Model].Motions.Add(motionfiles[data.Anims].Filename);
-						data.ShapeMotions = GetMotion(fc, ptr2 + 8, key, $"Knuckles\\{part}Shape.saanim", motions, modelfiles[data.Model].Model.CountMorph());
+							modelfiles[data.Part].Motions.Add(motionfiles[data.Anims].Filename);
+						data.ShapeMotions = GetMotion(fc, ptr + 0xC, key, $"Knuckles\\{part}Shape.saanim", motions, modelfiles[data.Part].Model.CountMorph());
 						if (data.ShapeMotions != null)
-							modelfiles[data.Model].Motions.Add(motionfiles[data.ShapeMotions].Filename);
+							modelfiles[data.Part].Motions.Add(motionfiles[data.ShapeMotions].Filename);
 
 					}
 					ini.Knuckles.Add(data);
-					ptr += 0xC;
+					ptr2 += 0xC;
 				}
 			}
-			else
-				Console.WriteLine("Knuckles is not in this Mini-Event");
 			ptr = fc.GetPointer(0x1C, key);
 			if (ptr != 0)
 			{
+				Console.WriteLine("Rouge is in this Mini-Event");
 				ini.RBodyAnims = GetMotion(fc, ptr, key, $"Rouge\\Body.saanim", motions, 62);
 				for (int i = 0; i < 4; i++)
 				{
@@ -199,33 +197,30 @@ namespace SA_Tools.SAArc
 					MiniEventChars data = new MiniEventChars();
 					int ptr2 = fc.GetPointer(ptr + 4, key);
 					if (ptr2 != 0)
-						data.Model = GetModel(fc, ptr2, key, $"Rouge\\{part}.sa2mdl");
-					if (data.Model != null)
+						data.Part = GetModel(fc, ptr2, key, $"Rouge\\{part}.sa2mdl");
+					if (data.Part != null)
 					{
-						data.Anims = GetMotion(fc, ptr2 + 4, key, $"Rouge\\{part}.saanim", motions, modelfiles[data.Model].Model.CountAnimated());
+						data.Anims = GetMotion(fc, ptr2 + 4, key, $"Rouge\\{part}.saanim", motions, modelfiles[data.Part].Model.CountAnimated());
 						if (data.Anims != null)
-							modelfiles[data.Model].Motions.Add(motionfiles[data.Anims].Filename);
-						data.ShapeMotions = GetMotion(fc, ptr2 + 8, key, $"Rouge\\{part}Shape.saanim", motions, modelfiles[data.Model].Model.CountMorph());
+							modelfiles[data.Part].Motions.Add(motionfiles[data.Anims].Filename);
+						data.ShapeMotions = GetMotion(fc, ptr2 + 8, key, $"Rouge\\{part}Shape.saanim", motions, modelfiles[data.Part].Model.CountMorph());
 						if (data.ShapeMotions != null)
-							modelfiles[data.Model].Motions.Add(motionfiles[data.ShapeMotions].Filename);
+							modelfiles[data.Part].Motions.Add(motionfiles[data.ShapeMotions].Filename);
 
 					}
 					ini.Rouge.Add(data);
-					ptr += 0xC;
+					ptr2 += 0xC;
 				}
 			}
-			else
-				Console.WriteLine("Rouge is not in this Mini-Event");
 			ptr = fc.GetPointer(0x24, key);
 			if (ptr != 0)
 			{
+				Console.WriteLine("Mech Eggman is in this Mini-Event");
 				ini.EWBodyAnims = GetMotion(fc, ptr, key, $"Mech Eggman\\Body.saanim", motions, 33);
 			}
-			else
-				Console.WriteLine("Mech Eggman is not in this Mini-Event");
 			ptr = fc.GetPointer(4, key);
 			if (ptr != 0)
-				ini.Camera = GetMotion(fc, ptr, key, $"Camera.saanim", motions, 1);
+				ini.Camera = GetMotion(fc, ptr + 0x10, key, $"Camera.saanim", motions, 1);
 			else
 				Console.WriteLine("Mini-Event does not contain a camera.");
 			foreach (var item in modelfiles.Values)
@@ -285,13 +280,13 @@ namespace SA_Tools.SAArc
 				ByteConverter.GetBytes(labels[ini.SBodyAnims]).CopyTo(fc, ptr);
 			int ptr2 = fc.GetPointer(ptr + 4, key);
 			if (ptr2 != 0)
-				for (int i = 0; i < 4; i++)
+				for (int i = 0; i < 1; i++)
 				{
 					MiniEventChars info = ini.Sonic[i];
-					if (info.Model != null)
+					if (info.Part != null)
 					{
-						if (labels.ContainsKeySafer(info.Model))
-							ByteConverter.GetBytes(labels[info.Model]).CopyTo(fc, ptr2);
+						if (labels.ContainsKeySafer(info.Part))
+							ByteConverter.GetBytes(labels[info.Part]).CopyTo(fc, ptr2);
 						if (labels.ContainsKeySafer(info.Anims))
 							ByteConverter.GetBytes(labels[info.Anims]).CopyTo(fc, ptr2 + 4);
 						if (labels.ContainsKeySafer(info.ShapeMotions))
@@ -307,10 +302,10 @@ namespace SA_Tools.SAArc
 				for (int i = 0; i < 4; i++)
 				{
 					MiniEventChars info = ini.Shadow[i];
-					if (info.Model != null)
+					if (info.Part != null)
 					{
-						if (labels.ContainsKeySafer(info.Model))
-							ByteConverter.GetBytes(labels[info.Model]).CopyTo(fc, ptr3);
+						if (labels.ContainsKeySafer(info.Part))
+							ByteConverter.GetBytes(labels[info.Part]).CopyTo(fc, ptr3);
 						if (labels.ContainsKeySafer(info.Anims))
 							ByteConverter.GetBytes(labels[info.Anims]).CopyTo(fc, ptr3 + 4);
 						if (labels.ContainsKeySafer(info.ShapeMotions))
@@ -326,10 +321,10 @@ namespace SA_Tools.SAArc
 				for (int i = 0; i < 4; i++)
 				{
 					MiniEventChars info = ini.Knuckles[i];
-					if (info.Model != null)
+					if (info.Part != null)
 					{
-						if (labels.ContainsKeySafer(info.Model))
-							ByteConverter.GetBytes(labels[info.Model]).CopyTo(fc, ptr4);
+						if (labels.ContainsKeySafer(info.Part))
+							ByteConverter.GetBytes(labels[info.Part]).CopyTo(fc, ptr4);
 						if (labels.ContainsKeySafer(info.Anims))
 							ByteConverter.GetBytes(labels[info.Anims]).CopyTo(fc, ptr4 + 4);
 						if (labels.ContainsKeySafer(info.ShapeMotions))
@@ -345,10 +340,10 @@ namespace SA_Tools.SAArc
 				for (int i = 0; i < 4; i++)
 				{
 					MiniEventChars info = ini.Rouge[i];
-					if (info.Model != null)
+					if (info.Part != null)
 					{
-						if (labels.ContainsKeySafer(info.Model))
-							ByteConverter.GetBytes(labels[info.Model]).CopyTo(fc, ptr5);
+						if (labels.ContainsKeySafer(info.Part))
+							ByteConverter.GetBytes(labels[info.Part]).CopyTo(fc, ptr5);
 						if (labels.ContainsKeySafer(info.Anims))
 							ByteConverter.GetBytes(labels[info.Anims]).CopyTo(fc, ptr5 + 4);
 						if (labels.ContainsKeySafer(info.ShapeMotions))
@@ -385,7 +380,7 @@ namespace SA_Tools.SAArc
 						if (modelfiles.ContainsKey(s))
 							modelfiles.Remove(s);
 					nodenames.AddRange(names);
-					modelfiles.Add(obj.Name, new ModelInfo(fn, obj, ModelFormat.Chunk));
+					modelfiles.Add(obj.Name, new MEModelInfo(fn, obj, ModelFormat.Chunk));
 				}
 			}
 			return name;
@@ -404,26 +399,8 @@ namespace SA_Tools.SAArc
 			}
 			if (mtn == null) return null;
 			if (!motionfiles.ContainsKey(mtn.Name) || motionfiles[mtn.Name].Filename == null)
-				motionfiles[mtn.Name] = new MotionInfo(fn, mtn);
+				motionfiles[mtn.Name] = new MEMotionInfo(fn, mtn);
 			return mtn.Name;
-		}
-
-		//Read Functions
-		private static List<NJS_MOTION> ReadMotionFile(string filename)
-		{
-			List<NJS_MOTION> motions = new List<NJS_MOTION>();
-			byte[] fc = File.ReadAllBytes(filename);
-			int addr = 0;
-			while (ByteConverter.ToInt64(fc, addr) != 0)
-			{
-				int ptr = ByteConverter.ToInt32(fc, addr);
-				if (ptr == -1)
-					motions.Add(null);
-				else
-					motions.Add(new NJS_MOTION(fc, ptr, 0, ByteConverter.ToInt32(fc, addr + 4)));
-				addr += 8;
-			}
-			return motions;
 		}
 
 		public static bool ContainsKeySafer<TValue>(this IDictionary<string, TValue> dict, string key)
@@ -432,14 +409,14 @@ namespace SA_Tools.SAArc
 		}
 	}
 
-	public class Models
+	public class MEModelInfo
 	{
 		public string Filename { get; set; }
 		public NJS_OBJECT Model { get; set; }
 		public ModelFormat Format { get; set; }
 		public List<string> Motions { get; set; } = new List<string>();
 
-		public Models(string fn, NJS_OBJECT obj, ModelFormat format)
+		public MEModelInfo(string fn, NJS_OBJECT obj, ModelFormat format)
 		{
 			Filename = fn;
 			Model = obj;
@@ -447,12 +424,12 @@ namespace SA_Tools.SAArc
 		}
 	}
 
-	public class Motions
+	public class MEMotionInfo
 	{
 		public string Filename { get; set; }
 		public NJS_MOTION Motion { get; set; }
 
-		public Motions(string fn, NJS_MOTION mtn)
+		public MEMotionInfo(string fn, NJS_MOTION mtn)
 		{
 			Filename = fn;
 			Motion = mtn;
@@ -486,7 +463,7 @@ namespace SA_Tools.SAArc
 
 	public class MiniEventChars
 	{
-		public string Model { get; set; }
+		public string Part { get; set; }
 		public string Anims { get; set; }
 		public string ShapeMotions { get; set; }
 	}
