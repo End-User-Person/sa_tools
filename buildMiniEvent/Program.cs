@@ -14,7 +14,7 @@ namespace buildMiniEvent
 			}
 			foreach (string filename in args)
 			{
-				sa2MiniEvent.Build(filename);
+				SA2MiniEvent.Build(filename);
 			}
 		}
 	}

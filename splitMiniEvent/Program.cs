@@ -14,7 +14,7 @@ namespace splitMiniEvent
 			}
 			foreach (string filename in args)
 			{
-				sa2MiniEvent.Split(filename);
+				SA2MiniEvent.Split(filename);
 			}
 		}
 	}

@@ -8,9 +8,9 @@ using System.Linq;
 
 namespace SA_Tools.SAArc
 {
-	public static class sa2MiniEvent
+	public static class SA2MiniEvent
 	{
-		static readonly string[] charbody = { "Head", "Mouth", "LHand", "RHand"};
+		static readonly string[] charbody = { "Head", "Mouth", "LHand", "RHand" };
 		static List<string> nodenames = new List<string>();
 		static Dictionary<string, MEModelInfo> modelfiles = new Dictionary<string, MEModelInfo>();
 		static Dictionary<string, MEMotionInfo> motionfiles = new Dictionary<string, MEMotionInfo>();
@@ -49,180 +49,249 @@ namespace SA_Tools.SAArc
 			if (ptr != 0)
 			{
 				Console.WriteLine("Sonic is in this Mini-Event");
-				ini.SBodyAnims = GetMotion(fc, ptr, key, $"Sonic\\Body.saanim", motions, 62);
-				for (int i = 0; i < 1; i++)
-				{
-					string upnam = charbody[i];
-					string part = upnam;
-					switch (i)
-					{
-						case 0:
-							part = "Head";
-							break;
-						case 1:
-							part = "Mouth";
-							break;
-						case 2:
-							part = "LHand";
-							break;
-						case 3:
-							part = "RHand";
-							break;
-					}
-					MiniEventChars data = new MiniEventChars();
-					int ptr2 = fc.GetPointer(ptr + 4, key);
+				Directory.CreateDirectory(Path.Combine(path, "Sonic"));
+				MiniEventChars data = new MiniEventChars();
+				data.BodyAnims = GetMotion(fc, ptr, key, $"Sonic\\Body.saanim", motions, 62);
+				int ptr2 = fc.GetPointer(ptr + 4, key);
 					if (ptr2 != 0)
-						data.Part = GetModel(fc, ptr + 4, key, $"Sonic\\{part}.sa2mdl");
-					if (data.Part != null)
+						data.HeadPart = GetModel(fc, ptr + 4, key, $"Sonic\\Head.sa2mdl");
+					if (data.HeadPart != null)
 					{
-						data.Anims = GetMotion(fc, ptr + 8, key, $"Sonic\\{part}.saanim", motions, modelfiles[data.Part].Model.CountAnimated());
-						if (data.Anims != null)
-							modelfiles[data.Part].Motions.Add(motionfiles[data.Anims].Filename);
-						data.ShapeMotions = GetMotion(fc, ptr + 0xC, key, $"Sonic\\{part}Shape.saanim", motions, modelfiles[data.Part].Model.CountMorph());
-						if (data.ShapeMotions != null)
-							modelfiles[data.Part].Motions.Add(motionfiles[data.ShapeMotions].Filename);
+						data.HeadAnims = GetMotion(fc, ptr + 8, key, $"Sonic\\Head.saanim", motions, modelfiles[data.HeadPart].Model.CountAnimated());
+						if (data.HeadAnims != null)
+							modelfiles[data.HeadPart].Motions.Add(motionfiles[data.HeadAnims].Filename);
+						data.HeadShapeMotions = GetMotion(fc, ptr + 0xC, key, $"Sonic\\HeadShape.saanim", motions, modelfiles[data.HeadPart].Model.CountMorph());
+						if (data.HeadShapeMotions != null)
+							modelfiles[data.HeadPart].Motions.Add(motionfiles[data.HeadShapeMotions].Filename);
 					}
-					ini.Sonic.Add(data);
-					ptr2 += 0xC;
+				ptr2 = fc.GetPointer(ptr + 0x10, key);
+				if (ptr2 != 0)
+					data.MouthPart = GetModel(fc, ptr + 0x10, key, $"Sonic\\Mouth.sa2mdl");
+				if (data.MouthPart != null)
+				{
+					data.MouthAnims = GetMotion(fc, ptr + 0x14, key, $"Sonic\\Mouth.saanim", motions, modelfiles[data.MouthPart].Model.CountAnimated());
+					if (data.MouthAnims != null)
+						modelfiles[data.MouthPart].Motions.Add(motionfiles[data.MouthAnims].Filename);
+					data.HeadShapeMotions = GetMotion(fc, ptr + 0x18, key, $"Sonic\\MouthShape.saanim", motions, modelfiles[data.MouthPart].Model.CountMorph());
+					if (data.MouthShapeMotions != null)
+						modelfiles[data.MouthPart].Motions.Add(motionfiles[data.MouthShapeMotions].Filename);
 				}
-			}
+				ptr2 = fc.GetPointer(ptr + 0x1C, key);
+				if (ptr2 != 0)
+					data.LHandPart = GetModel(fc, ptr + 0x1C, key, $"Sonic\\LeftHand.sa2mdl");
+				if (data.LHandPart != null)
+				{
+					data.LHandAnims = GetMotion(fc, ptr + 0x20, key, $"Sonic\\LeftHand.saanim", motions, modelfiles[data.LHandPart].Model.CountAnimated());
+					if (data.LHandAnims != null)
+						modelfiles[data.LHandPart].Motions.Add(motionfiles[data.LHandAnims].Filename);
+					data.HeadShapeMotions = GetMotion(fc, ptr + 0x24, key, $"Sonic\\LeftHandShape.saanim", motions, modelfiles[data.LHandPart].Model.CountMorph());
+					if (data.LHandShapeMotions != null)
+						modelfiles[data.LHandPart].Motions.Add(motionfiles[data.LHandShapeMotions].Filename);
+				}
+				ptr2 = fc.GetPointer(ptr + 0x28, key);
+				if (ptr2 != 0)
+					data.RHandPart = GetModel(fc, ptr + 0x28, key, $"Sonic\\RightHand.sa2mdl");
+				if (data.RHandPart != null)
+				{
+					data.RHandAnims = GetMotion(fc, ptr + 0x2C, key, $"Sonic\\RightHand.saanim", motions, modelfiles[data.RHandPart].Model.CountAnimated());
+					if (data.RHandAnims != null)
+						modelfiles[data.RHandPart].Motions.Add(motionfiles[data.RHandAnims].Filename);
+					data.HeadShapeMotions = GetMotion(fc, ptr + 0x30, key, $"Sonic\\RightHandShape.saanim", motions, modelfiles[data.RHandPart].Model.CountMorph());
+					if (data.RHandShapeMotions != null)
+						modelfiles[data.RHandPart].Motions.Add(motionfiles[data.RHandShapeMotions].Filename);
+				}
+				ini.Sonic.Add(data);
+				}
 			ptr = fc.GetPointer(0xC, key);
 			if (ptr != 0)
 			{
 				Console.WriteLine("Shadow is in this Mini-Event");
-				ini.ShBodyAnims = GetMotion(fc, ptr, key, $"Shadow\\Body.saanim", motions, 62);
-				for (int i = 0; i < 3; i++)
-					{
-						string upnam = charbody[i];
-						string part = upnam;
-						switch (i)
-						{
-							case 0:
-								part = "Head";
-								break;
-							case 1:
-								part = "Mouth";
-								break;
-							case 2:
-								part = "LHand";
-								break;
-							case 3:
-								part = "RHand";
-								break;
-						}
-						MiniEventChars data = new MiniEventChars();
-							int ptr2 = fc.GetPointer(ptr + 4, key);
-							if (ptr2 != 0)
-								data.Part = GetModel(fc, ptr + 4, key, $"Shadow\\{part}.sa2mdl");
-							if (data.Part != null)
-							{
-								data.Anims = GetMotion(fc, ptr + 8, key, $"Shadow\\{part}.saanim", motions, modelfiles[data.Part].Model.CountAnimated());
-								if (data.Anims != null)
-									modelfiles[data.Part].Motions.Add(motionfiles[data.Anims].Filename);
-								data.ShapeMotions = GetMotion(fc, ptr + 0xC, key, $"Shadow\\{part}Shape.saanim", motions, modelfiles[data.Part].Model.CountMorph());
-								if (data.ShapeMotions != null)
-									modelfiles[data.Part].Motions.Add(motionfiles[data.ShapeMotions].Filename);
-
-							}
-					ini.Shadow.Add(data);
-					ptr2 += 0xC;
-					}
+				Directory.CreateDirectory(Path.Combine(path, "Shadow"));
+				MiniEventChars data = new MiniEventChars();
+				data.BodyAnims = GetMotion(fc, ptr, key, $"Shadow\\Body.saanim", motions, 62);
+				int ptr2 = fc.GetPointer(ptr + 4, key);
+				if (ptr2 != 0)
+					data.HeadPart = GetModel(fc, ptr + 4, key, $"Shadow\\Head.sa2mdl");
+				if (data.HeadPart != null)
+				{
+					data.HeadAnims = GetMotion(fc, ptr + 8, key, $"Shadow\\Head.saanim", motions, modelfiles[data.HeadPart].Model.CountAnimated());
+					if (data.HeadAnims != null)
+						modelfiles[data.HeadPart].Motions.Add(motionfiles[data.HeadAnims].Filename);
+					data.HeadShapeMotions = GetMotion(fc, ptr + 0xC, key, $"Shadow\\HeadShape.saanim", motions, modelfiles[data.HeadPart].Model.CountMorph());
+					if (data.HeadShapeMotions != null)
+						modelfiles[data.HeadPart].Motions.Add(motionfiles[data.HeadShapeMotions].Filename);
 				}
+				ptr2 = fc.GetPointer(ptr + 0x10, key);
+				if (ptr2 != 0)
+					data.MouthPart = GetModel(fc, ptr + 0x10, key, $"Shadow\\Mouth.sa2mdl");
+				if (data.MouthPart != null)
+				{
+					data.MouthAnims = GetMotion(fc, ptr + 0x14, key, $"Shadow\\Mouth.saanim", motions, modelfiles[data.MouthPart].Model.CountAnimated());
+					if (data.MouthAnims != null)
+						modelfiles[data.MouthPart].Motions.Add(motionfiles[data.MouthAnims].Filename);
+					data.HeadShapeMotions = GetMotion(fc, ptr + 0x18, key, $"Shadow\\MouthShape.saanim", motions, modelfiles[data.MouthPart].Model.CountMorph());
+					if (data.MouthShapeMotions != null)
+						modelfiles[data.MouthPart].Motions.Add(motionfiles[data.MouthShapeMotions].Filename);
+				}
+				ptr2 = fc.GetPointer(ptr + 0x1C, key);
+				if (ptr2 != 0)
+					data.LHandPart = GetModel(fc, ptr + 0x1C, key, $"Shadow\\LeftHand.sa2mdl");
+				if (data.LHandPart != null)
+				{
+					data.LHandAnims = GetMotion(fc, ptr + 0x20, key, $"Shadow\\LeftHand.saanim", motions, modelfiles[data.LHandPart].Model.CountAnimated());
+					if (data.LHandAnims != null)
+						modelfiles[data.LHandPart].Motions.Add(motionfiles[data.LHandAnims].Filename);
+					data.HeadShapeMotions = GetMotion(fc, ptr + 0x24, key, $"Shadow\\LeftHandShape.saanim", motions, modelfiles[data.LHandPart].Model.CountMorph());
+					if (data.LHandShapeMotions != null)
+						modelfiles[data.LHandPart].Motions.Add(motionfiles[data.LHandShapeMotions].Filename);
+				}
+				ptr2 = fc.GetPointer(ptr + 0x28, key);
+				if (ptr2 != 0)
+					data.RHandPart = GetModel(fc, ptr + 0x28, key, $"Shadow\\RightHand.sa2mdl");
+				if (data.RHandPart != null)
+				{
+					data.RHandAnims = GetMotion(fc, ptr + 0x2C, key, $"Shadow\\RightHand.saanim", motions, modelfiles[data.RHandPart].Model.CountAnimated());
+					if (data.RHandAnims != null)
+						modelfiles[data.RHandPart].Motions.Add(motionfiles[data.RHandAnims].Filename);
+					data.HeadShapeMotions = GetMotion(fc, ptr + 0x30, key, $"Shadow\\RightHandShape.saanim", motions, modelfiles[data.RHandPart].Model.CountMorph());
+					if (data.RHandShapeMotions != null)
+						modelfiles[data.RHandPart].Motions.Add(motionfiles[data.RHandShapeMotions].Filename);
+				}
+				ini.Shadow.Add(data);
+			}
 			ptr = fc.GetPointer(0x18, key);
 			if (ptr != 0)
 			{
 				Console.WriteLine("Knuckles is in this Mini-Event");
-				ini.KBodyAnims = GetMotion(fc, ptr, key, $"Knuckles\\Body.saanim", motions, 62);
-				for (int i = 0; i < 4; i++)
+				Directory.CreateDirectory(Path.Combine(path, "Knuckles"));
+				MiniEventChars data = new MiniEventChars();
+				data.BodyAnims = GetMotion(fc, ptr, key, $"Knuckles\\Body.saanim", motions, 62);
+				int ptr2 = fc.GetPointer(ptr + 4, key);
+				if (ptr2 != 0)
+					data.HeadPart = GetModel(fc, ptr + 4, key, $"Knuckles\\Head.sa2mdl");
+				if (data.HeadPart != null)
 				{
-					string upnam = charbody[i];
-					string part = upnam;
-					switch (i)
-					{
-						case 0:
-							part = "Head";
-							break;
-						case 1:
-							part = "Mouth";
-							break;
-						case 2:
-							part = "LHand";
-							break;
-						case 3:
-							part = "RHand";
-							break;
-					}
-					MiniEventChars data = new MiniEventChars();
-					int ptr2 = fc.GetPointer(ptr + 4, key);
-					if (ptr2 != 0)
-						data.Part = GetModel(fc, ptr + 4, key, $"Knuckles\\{part}.sa2mdl");
-					if (data.Part != null)
-					{
-						data.Anims = GetMotion(fc, ptr + 8, key, $"Knuckles\\{part}.saanim", motions, modelfiles[data.Part].Model.CountAnimated());
-						if (data.Anims != null)
-							modelfiles[data.Part].Motions.Add(motionfiles[data.Anims].Filename);
-						data.ShapeMotions = GetMotion(fc, ptr + 0xC, key, $"Knuckles\\{part}Shape.saanim", motions, modelfiles[data.Part].Model.CountMorph());
-						if (data.ShapeMotions != null)
-							modelfiles[data.Part].Motions.Add(motionfiles[data.ShapeMotions].Filename);
-
-					}
-					ini.Knuckles.Add(data);
-					ptr2 += 0xC;
+					data.HeadAnims = GetMotion(fc, ptr + 8, key, $"Knuckles\\Head.saanim", motions, modelfiles[data.HeadPart].Model.CountAnimated());
+					if (data.HeadAnims != null)
+						modelfiles[data.HeadPart].Motions.Add(motionfiles[data.HeadAnims].Filename);
+					data.HeadShapeMotions = GetMotion(fc, ptr + 0xC, key, $"Knuckles\\HeadShape.saanim", motions, modelfiles[data.HeadPart].Model.CountMorph());
+					if (data.HeadShapeMotions != null)
+						modelfiles[data.HeadPart].Motions.Add(motionfiles[data.HeadShapeMotions].Filename);
 				}
+				ptr2 = fc.GetPointer(ptr + 0x10, key);
+				if (ptr2 != 0)
+					data.MouthPart = GetModel(fc, ptr + 0x10, key, $"Knuckles\\Mouth.sa2mdl");
+				if (data.MouthPart != null)
+				{
+					data.MouthAnims = GetMotion(fc, ptr + 0x14, key, $"Knuckles\\Mouth.saanim", motions, modelfiles[data.MouthPart].Model.CountAnimated());
+					if (data.MouthAnims != null)
+						modelfiles[data.MouthPart].Motions.Add(motionfiles[data.MouthAnims].Filename);
+					data.HeadShapeMotions = GetMotion(fc, ptr + 0x18, key, $"Knuckles\\MouthShape.saanim", motions, modelfiles[data.MouthPart].Model.CountMorph());
+					if (data.MouthShapeMotions != null)
+						modelfiles[data.MouthPart].Motions.Add(motionfiles[data.MouthShapeMotions].Filename);
+				}
+				ptr2 = fc.GetPointer(ptr + 0x1C, key);
+				if (ptr2 != 0)
+					data.LHandPart = GetModel(fc, ptr + 0x1C, key, $"Knuckles\\LeftHand.sa2mdl");
+				if (data.LHandPart != null)
+				{
+					data.LHandAnims = GetMotion(fc, ptr + 0x20, key, $"Knuckles\\LeftHand.saanim", motions, modelfiles[data.LHandPart].Model.CountAnimated());
+					if (data.LHandAnims != null)
+						modelfiles[data.LHandPart].Motions.Add(motionfiles[data.LHandAnims].Filename);
+					data.HeadShapeMotions = GetMotion(fc, ptr + 0x24, key, $"Knuckles\\LeftHandShape.saanim", motions, modelfiles[data.LHandPart].Model.CountMorph());
+					if (data.LHandShapeMotions != null)
+						modelfiles[data.LHandPart].Motions.Add(motionfiles[data.LHandShapeMotions].Filename);
+				}
+				ptr2 = fc.GetPointer(ptr + 0x28, key);
+				if (ptr2 != 0)
+					data.RHandPart = GetModel(fc, ptr + 0x28, key, $"Knuckles\\RightHand.sa2mdl");
+				if (data.RHandPart != null)
+				{
+					data.RHandAnims = GetMotion(fc, ptr + 0x2C, key, $"Knuckles\\RightHand.saanim", motions, modelfiles[data.RHandPart].Model.CountAnimated());
+					if (data.RHandAnims != null)
+						modelfiles[data.RHandPart].Motions.Add(motionfiles[data.RHandAnims].Filename);
+					data.HeadShapeMotions = GetMotion(fc, ptr + 0x30, key, $"Knuckles\\RightHandShape.saanim", motions, modelfiles[data.RHandPart].Model.CountMorph());
+					if (data.RHandShapeMotions != null)
+						modelfiles[data.RHandPart].Motions.Add(motionfiles[data.RHandShapeMotions].Filename);
+				}
+				ini.Knuckles.Add(data);
 			}
 			ptr = fc.GetPointer(0x1C, key);
 			if (ptr != 0)
 			{
 				Console.WriteLine("Rouge is in this Mini-Event");
-				ini.RBodyAnims = GetMotion(fc, ptr, key, $"Rouge\\Body.saanim", motions, 62);
-				for (int i = 0; i < 4; i++)
+				Directory.CreateDirectory(Path.Combine(path, "Rouge"));
+				MiniEventChars data = new MiniEventChars();
+				data.BodyAnims = GetMotion(fc, ptr, key, $"Rouge\\Body.saanim", motions, 62);
+				int ptr2 = fc.GetPointer(ptr + 4, key);
+				if (ptr2 != 0)
+					data.HeadPart = GetModel(fc, ptr + 4, key, $"Rouge\\Head.sa2mdl");
+				if (data.HeadPart != null)
 				{
-					string upnam = charbody[i];
-					string part = upnam;
-					switch (i)
-					{
-						case 0:
-							part = "Head";
-							break;
-						case 1:
-							part = "Mouth";
-							break;
-						case 2:
-							part = "LHand";
-							break;
-						case 3:
-							part = "RHand";
-							break;
-					}
-					MiniEventChars data = new MiniEventChars();
-					int ptr2 = fc.GetPointer(ptr + 4, key);
-					if (ptr2 != 0)
-						data.Part = GetModel(fc, ptr2, key, $"Rouge\\{part}.sa2mdl");
-					if (data.Part != null)
-					{
-						data.Anims = GetMotion(fc, ptr2 + 4, key, $"Rouge\\{part}.saanim", motions, modelfiles[data.Part].Model.CountAnimated());
-						if (data.Anims != null)
-							modelfiles[data.Part].Motions.Add(motionfiles[data.Anims].Filename);
-						data.ShapeMotions = GetMotion(fc, ptr2 + 8, key, $"Rouge\\{part}Shape.saanim", motions, modelfiles[data.Part].Model.CountMorph());
-						if (data.ShapeMotions != null)
-							modelfiles[data.Part].Motions.Add(motionfiles[data.ShapeMotions].Filename);
-
-					}
-					ini.Rouge.Add(data);
-					ptr2 += 0xC;
+					data.HeadAnims = GetMotion(fc, ptr + 8, key, $"Rouge\\Head.saanim", motions, modelfiles[data.HeadPart].Model.CountAnimated());
+					if (data.HeadAnims != null)
+						modelfiles[data.HeadPart].Motions.Add(motionfiles[data.HeadAnims].Filename);
+					data.HeadShapeMotions = GetMotion(fc, ptr + 0xC, key, $"Rouge\\HeadShape.saanim", motions, modelfiles[data.HeadPart].Model.CountMorph());
+					if (data.HeadShapeMotions != null)
+						modelfiles[data.HeadPart].Motions.Add(motionfiles[data.HeadShapeMotions].Filename);
 				}
+				ptr2 = fc.GetPointer(ptr + 0x10, key);
+				if (ptr2 != 0)
+					data.MouthPart = GetModel(fc, ptr + 0x10, key, $"Rouge\\Mouth.sa2mdl");
+				if (data.MouthPart != null)
+				{
+					data.MouthAnims = GetMotion(fc, ptr + 0x14, key, $"Rouge\\Mouth.saanim", motions, modelfiles[data.MouthPart].Model.CountAnimated());
+					if (data.MouthAnims != null)
+						modelfiles[data.MouthPart].Motions.Add(motionfiles[data.MouthAnims].Filename);
+					data.HeadShapeMotions = GetMotion(fc, ptr + 0x18, key, $"Rouge\\MouthShape.saanim", motions, modelfiles[data.MouthPart].Model.CountMorph());
+					if (data.MouthShapeMotions != null)
+						modelfiles[data.MouthPart].Motions.Add(motionfiles[data.MouthShapeMotions].Filename);
+				}
+				ptr2 = fc.GetPointer(ptr + 0x1C, key);
+				if (ptr2 != 0)
+					data.LHandPart = GetModel(fc, ptr + 0x1C, key, $"Rouge\\LeftHand.sa2mdl");
+				if (data.LHandPart != null)
+				{
+					data.LHandAnims = GetMotion(fc, ptr + 0x20, key, $"Rouge\\LeftHand.saanim", motions, modelfiles[data.LHandPart].Model.CountAnimated());
+					if (data.LHandAnims != null)
+						modelfiles[data.LHandPart].Motions.Add(motionfiles[data.LHandAnims].Filename);
+					data.HeadShapeMotions = GetMotion(fc, ptr + 0x24, key, $"Rouge\\LeftHandShape.saanim", motions, modelfiles[data.LHandPart].Model.CountMorph());
+					if (data.LHandShapeMotions != null)
+						modelfiles[data.LHandPart].Motions.Add(motionfiles[data.LHandShapeMotions].Filename);
+				}
+				ptr2 = fc.GetPointer(ptr + 0x28, key);
+				if (ptr2 != 0)
+					data.RHandPart = GetModel(fc, ptr + 0x28, key, $"Rouge\\RightHand.sa2mdl");
+				if (data.RHandPart != null)
+				{
+					data.RHandAnims = GetMotion(fc, ptr + 0x2C, key, $"Rouge\\RightHand.saanim", motions, modelfiles[data.RHandPart].Model.CountAnimated());
+					if (data.RHandAnims != null)
+						modelfiles[data.RHandPart].Motions.Add(motionfiles[data.RHandAnims].Filename);
+					data.HeadShapeMotions = GetMotion(fc, ptr + 0x30, key, $"Rouge\\RightHandShape.saanim", motions, modelfiles[data.RHandPart].Model.CountMorph());
+					if (data.RHandShapeMotions != null)
+						modelfiles[data.RHandPart].Motions.Add(motionfiles[data.RHandShapeMotions].Filename);
+				}
+				ini.Rouge.Add(data);
 			}
 			ptr = fc.GetPointer(0x24, key);
 			if (ptr != 0)
 			{
 				Console.WriteLine("Mech Eggman is in this Mini-Event");
-				ini.EWBodyAnims = GetMotion(fc, ptr, key, $"Mech Eggman\\Body.saanim", motions, 33);
+				Directory.CreateDirectory(Path.Combine(path, "Mech Eggman"));
+				ini.MechEggmanBodyAnims = GetMotion(fc, ptr, key, $"Mech Eggman\\Body.saanim", motions, 33);
 			}
 			ptr = fc.GetPointer(4, key);
 			if (ptr != 0)
 				ini.Camera = GetMotion(fc, ptr + 0x10, key, $"Camera.saanim", motions, 1);
 			else
 				Console.WriteLine("Mini-Event does not contain a camera.");
+			foreach (var item in motionfiles.Values)
+			{
+				string fn = item.Filename;
+				string fp = Path.Combine(path, fn);
+				item.Motion.Save(fp);
+				ini.Files.Add(fn, HelperFunctions.FileHash(fp));
+			}
 			foreach (var item in modelfiles.Values)
 			{
 				string fp = Path.Combine(path, item.Filename);
@@ -236,8 +305,7 @@ namespace SA_Tools.SAArc
 			};
 			using (var tw = File.CreateText(Path.Combine(path, Path.ChangeExtension(Path.GetFileName(filename), ".json"))))
 				js.Serialize(tw, ini);
-	
-	}
+		}
 
 		public static void Build(string filename)
 		{
@@ -267,93 +335,152 @@ namespace SA_Tools.SAArc
 				ByteConverter.BigEndian = false;
 				key = 0xCB00000;
 			}
-			bool battle = ini.Game == Game.SA2B;
 			List<byte> modelbytes = new List<byte>(fc);
 			Dictionary<string, uint> labels = new Dictionary<string, uint>();
 			foreach (string file in ini.Files.Where(a => a.Key.EndsWith(".sa2mdl", StringComparison.OrdinalIgnoreCase) && HelperFunctions.FileHash(Path.Combine(path, a.Key)) != a.Value).Select(a => a.Key))
 				modelbytes.AddRange(new ModelFile(Path.Combine(path, file)).Model.GetBytes((uint)(key + modelbytes.Count), false, labels, out uint _));
-				foreach (string file in ini.Files.Where(a => a.Key.EndsWith(".saanim", StringComparison.OrdinalIgnoreCase) && HelperFunctions.FileHash(Path.Combine(path, a.Key)) != a.Value).Select(a => a.Key))
+			foreach (string file in ini.Files.Where(a => a.Key.EndsWith(".saanim", StringComparison.OrdinalIgnoreCase) && HelperFunctions.FileHash(Path.Combine(path, a.Key)) != a.Value).Select(a => a.Key))
 				modelbytes.AddRange(NJS_MOTION.Load(Path.Combine(path, file)).GetBytes((uint)(key + modelbytes.Count), labels, out uint _));
 			fc = modelbytes.ToArray();
 			int ptr = fc.GetPointer(8, key);
-			if (ptr != 0 && labels.ContainsKeySafer(ini.SBodyAnims))
-				ByteConverter.GetBytes(labels[ini.SBodyAnims]).CopyTo(fc, ptr);
-			int ptr2 = fc.GetPointer(ptr + 4, key);
-			if (ptr2 != 0)
-				for (int i = 0; i < 1; i++)
+			if (ptr != 0)
+			{
+				MiniEventChars info = ini.Sonic[0];
+				if (labels.ContainsKeySafer(info.BodyAnims))
+				ByteConverter.GetBytes(labels[info.BodyAnims]).CopyTo(fc, ptr);
+				if (info.HeadPart != null)
 				{
-					MiniEventChars info = ini.Sonic[i];
-					if (info.Part != null)
-					{
-						if (labels.ContainsKeySafer(info.Part))
-							ByteConverter.GetBytes(labels[info.Part]).CopyTo(fc, ptr2);
-						if (labels.ContainsKeySafer(info.Anims))
-							ByteConverter.GetBytes(labels[info.Anims]).CopyTo(fc, ptr2 + 4);
-						if (labels.ContainsKeySafer(info.ShapeMotions))
-							ByteConverter.GetBytes(labels[info.ShapeMotions]).CopyTo(fc, ptr2 + 8);
-					}
-					ptr2 += 0xC;
+					if (labels.ContainsKeySafer(info.HeadPart))
+						ByteConverter.GetBytes(labels[info.HeadPart]).CopyTo(fc, ptr + 4);
+					if (labels.ContainsKeySafer(info.HeadAnims))
+						ByteConverter.GetBytes(labels[info.HeadAnims]).CopyTo(fc, ptr + 8);
+					if (labels.ContainsKeySafer(info.HeadShapeMotions))
+						ByteConverter.GetBytes(labels[info.HeadShapeMotions]).CopyTo(fc, ptr + 0xC);
+					if (labels.ContainsKeySafer(info.MouthPart))
+						ByteConverter.GetBytes(labels[info.MouthPart]).CopyTo(fc, ptr + 0x10);
+					if (labels.ContainsKeySafer(info.MouthAnims))
+						ByteConverter.GetBytes(labels[info.MouthAnims]).CopyTo(fc, ptr + 0x14);
+					if (labels.ContainsKeySafer(info.MouthShapeMotions))
+						ByteConverter.GetBytes(labels[info.MouthShapeMotions]).CopyTo(fc, ptr + 0x18);
+					if (labels.ContainsKeySafer(info.LHandPart))
+						ByteConverter.GetBytes(labels[info.LHandPart]).CopyTo(fc, ptr + 0x1C);
+					if (labels.ContainsKeySafer(info.LHandAnims))
+						ByteConverter.GetBytes(labels[info.LHandAnims]).CopyTo(fc, ptr + 0x20);
+					if (labels.ContainsKeySafer(info.LHandShapeMotions))
+						ByteConverter.GetBytes(labels[info.LHandShapeMotions]).CopyTo(fc, ptr + 0x24);
+					if (labels.ContainsKeySafer(info.RHandPart))
+						ByteConverter.GetBytes(labels[info.RHandPart]).CopyTo(fc, ptr + 0x28);
+					if (labels.ContainsKeySafer(info.RHandAnims))
+						ByteConverter.GetBytes(labels[info.RHandAnims]).CopyTo(fc, ptr + 0x2C);
+					if (labels.ContainsKeySafer(info.RHandShapeMotions))
+						ByteConverter.GetBytes(labels[info.RHandShapeMotions]).CopyTo(fc, ptr + 0x30);
 				}
+			}
 			ptr = fc.GetPointer(0xC, key);
-			if (ptr != 0 && labels.ContainsKeySafer(ini.ShBodyAnims))
-				ByteConverter.GetBytes(labels[ini.ShBodyAnims]).CopyTo(fc, ptr);
-			int ptr3 = fc.GetPointer(ptr + 4, key);
-			if (ptr3 != 0)
-				for (int i = 0; i < 4; i++)
+			if (ptr != 0)
+			{
+				MiniEventChars info = ini.Shadow[0];
+				if (labels.ContainsKeySafer(info.BodyAnims))
+					ByteConverter.GetBytes(labels[info.BodyAnims]).CopyTo(fc, ptr);
+				if (info.HeadPart != null)
 				{
-					MiniEventChars info = ini.Shadow[i];
-					if (info.Part != null)
-					{
-						if (labels.ContainsKeySafer(info.Part))
-							ByteConverter.GetBytes(labels[info.Part]).CopyTo(fc, ptr3);
-						if (labels.ContainsKeySafer(info.Anims))
-							ByteConverter.GetBytes(labels[info.Anims]).CopyTo(fc, ptr3 + 4);
-						if (labels.ContainsKeySafer(info.ShapeMotions))
-							ByteConverter.GetBytes(labels[info.ShapeMotions]).CopyTo(fc, ptr3 + 8);
-					}
-					ptr3 += 0xC;
+					if (labels.ContainsKeySafer(info.HeadPart))
+						ByteConverter.GetBytes(labels[info.HeadPart]).CopyTo(fc, ptr + 4);
+					if (labels.ContainsKeySafer(info.HeadAnims))
+						ByteConverter.GetBytes(labels[info.HeadAnims]).CopyTo(fc, ptr + 8);
+					if (labels.ContainsKeySafer(info.HeadShapeMotions))
+						ByteConverter.GetBytes(labels[info.HeadShapeMotions]).CopyTo(fc, ptr + 0xC);
+					if (labels.ContainsKeySafer(info.MouthPart))
+						ByteConverter.GetBytes(labels[info.MouthPart]).CopyTo(fc, ptr + 0x10);
+					if (labels.ContainsKeySafer(info.MouthAnims))
+						ByteConverter.GetBytes(labels[info.MouthAnims]).CopyTo(fc, ptr + 0x14);
+					if (labels.ContainsKeySafer(info.MouthShapeMotions))
+						ByteConverter.GetBytes(labels[info.MouthShapeMotions]).CopyTo(fc, ptr + 0x18);
+					if (labels.ContainsKeySafer(info.LHandPart))
+						ByteConverter.GetBytes(labels[info.LHandPart]).CopyTo(fc, ptr + 0x1C);
+					if (labels.ContainsKeySafer(info.LHandAnims))
+						ByteConverter.GetBytes(labels[info.LHandAnims]).CopyTo(fc, ptr + 0x20);
+					if (labels.ContainsKeySafer(info.LHandShapeMotions))
+						ByteConverter.GetBytes(labels[info.LHandShapeMotions]).CopyTo(fc, ptr + 0x24);
+					if (labels.ContainsKeySafer(info.RHandPart))
+						ByteConverter.GetBytes(labels[info.RHandPart]).CopyTo(fc, ptr + 0x28);
+					if (labels.ContainsKeySafer(info.RHandAnims))
+						ByteConverter.GetBytes(labels[info.RHandAnims]).CopyTo(fc, ptr + 0x2C);
+					if (labels.ContainsKeySafer(info.RHandShapeMotions))
+						ByteConverter.GetBytes(labels[info.RHandShapeMotions]).CopyTo(fc, ptr + 0x30);
 				}
+			}
 			ptr = fc.GetPointer(0x18, key);
-			if (ptr != 0 && labels.ContainsKeySafer(ini.KBodyAnims))
-				ByteConverter.GetBytes(labels[ini.KBodyAnims]).CopyTo(fc, ptr);
-			int ptr4 = fc.GetPointer(ptr + 4, key);
-			if (ptr4 != 0)
-				for (int i = 0; i < 4; i++)
+			if (ptr != 0)
+			{
+				MiniEventChars info = ini.Knuckles[0];
+				if (labels.ContainsKeySafer(info.BodyAnims))
+					ByteConverter.GetBytes(labels[info.BodyAnims]).CopyTo(fc, ptr);
+				if (info.HeadPart != null)
 				{
-					MiniEventChars info = ini.Knuckles[i];
-					if (info.Part != null)
-					{
-						if (labels.ContainsKeySafer(info.Part))
-							ByteConverter.GetBytes(labels[info.Part]).CopyTo(fc, ptr4);
-						if (labels.ContainsKeySafer(info.Anims))
-							ByteConverter.GetBytes(labels[info.Anims]).CopyTo(fc, ptr4 + 4);
-						if (labels.ContainsKeySafer(info.ShapeMotions))
-							ByteConverter.GetBytes(labels[info.ShapeMotions]).CopyTo(fc, ptr4 + 8);
-					}
-					ptr4 += 0xC;
+					if (labels.ContainsKeySafer(info.HeadPart))
+						ByteConverter.GetBytes(labels[info.HeadPart]).CopyTo(fc, ptr + 4);
+					if (labels.ContainsKeySafer(info.HeadAnims))
+						ByteConverter.GetBytes(labels[info.HeadAnims]).CopyTo(fc, ptr + 8);
+					if (labels.ContainsKeySafer(info.HeadShapeMotions))
+						ByteConverter.GetBytes(labels[info.HeadShapeMotions]).CopyTo(fc, ptr + 0xC);
+					if (labels.ContainsKeySafer(info.MouthPart))
+						ByteConverter.GetBytes(labels[info.MouthPart]).CopyTo(fc, ptr + 0x10);
+					if (labels.ContainsKeySafer(info.MouthAnims))
+						ByteConverter.GetBytes(labels[info.MouthAnims]).CopyTo(fc, ptr + 0x14);
+					if (labels.ContainsKeySafer(info.MouthShapeMotions))
+						ByteConverter.GetBytes(labels[info.MouthShapeMotions]).CopyTo(fc, ptr + 0x18);
+					if (labels.ContainsKeySafer(info.LHandPart))
+						ByteConverter.GetBytes(labels[info.LHandPart]).CopyTo(fc, ptr + 0x1C);
+					if (labels.ContainsKeySafer(info.LHandAnims))
+						ByteConverter.GetBytes(labels[info.LHandAnims]).CopyTo(fc, ptr + 0x20);
+					if (labels.ContainsKeySafer(info.LHandShapeMotions))
+						ByteConverter.GetBytes(labels[info.LHandShapeMotions]).CopyTo(fc, ptr + 0x24);
+					if (labels.ContainsKeySafer(info.RHandPart))
+						ByteConverter.GetBytes(labels[info.RHandPart]).CopyTo(fc, ptr + 0x28);
+					if (labels.ContainsKeySafer(info.RHandAnims))
+						ByteConverter.GetBytes(labels[info.RHandAnims]).CopyTo(fc, ptr + 0x2C);
+					if (labels.ContainsKeySafer(info.RHandShapeMotions))
+						ByteConverter.GetBytes(labels[info.RHandShapeMotions]).CopyTo(fc, ptr + 0x30);
 				}
+			}
 			ptr = fc.GetPointer(0x1C, key);
-			if (ptr != 0 && labels.ContainsKeySafer(ini.RBodyAnims))
-				ByteConverter.GetBytes(labels[ini.RBodyAnims]).CopyTo(fc, ptr);
-			int ptr5 = fc.GetPointer(ptr + 4, key);
-			if (ptr5 != 0)
-				for (int i = 0; i < 4; i++)
+			if (ptr != 0)
+			{
+				MiniEventChars info = ini.Rouge[0];
+				if (labels.ContainsKeySafer(info.BodyAnims))
+					ByteConverter.GetBytes(labels[info.BodyAnims]).CopyTo(fc, ptr);
+				if (info.HeadPart != null)
 				{
-					MiniEventChars info = ini.Rouge[i];
-					if (info.Part != null)
-					{
-						if (labels.ContainsKeySafer(info.Part))
-							ByteConverter.GetBytes(labels[info.Part]).CopyTo(fc, ptr5);
-						if (labels.ContainsKeySafer(info.Anims))
-							ByteConverter.GetBytes(labels[info.Anims]).CopyTo(fc, ptr5 + 4);
-						if (labels.ContainsKeySafer(info.ShapeMotions))
-							ByteConverter.GetBytes(labels[info.ShapeMotions]).CopyTo(fc, ptr5 + 8);
-					}
-					ptr5 += 0xC;
+					if (labels.ContainsKeySafer(info.HeadPart))
+						ByteConverter.GetBytes(labels[info.HeadPart]).CopyTo(fc, ptr + 4);
+					if (labels.ContainsKeySafer(info.HeadAnims))
+						ByteConverter.GetBytes(labels[info.HeadAnims]).CopyTo(fc, ptr + 8);
+					if (labels.ContainsKeySafer(info.HeadShapeMotions))
+						ByteConverter.GetBytes(labels[info.HeadShapeMotions]).CopyTo(fc, ptr + 0xC);
+					if (labels.ContainsKeySafer(info.MouthPart))
+						ByteConverter.GetBytes(labels[info.MouthPart]).CopyTo(fc, ptr + 0x10);
+					if (labels.ContainsKeySafer(info.MouthAnims))
+						ByteConverter.GetBytes(labels[info.MouthAnims]).CopyTo(fc, ptr + 0x14);
+					if (labels.ContainsKeySafer(info.MouthShapeMotions))
+						ByteConverter.GetBytes(labels[info.MouthShapeMotions]).CopyTo(fc, ptr + 0x18);
+					if (labels.ContainsKeySafer(info.LHandPart))
+						ByteConverter.GetBytes(labels[info.LHandPart]).CopyTo(fc, ptr + 0x1C);
+					if (labels.ContainsKeySafer(info.LHandAnims))
+						ByteConverter.GetBytes(labels[info.LHandAnims]).CopyTo(fc, ptr + 0x20);
+					if (labels.ContainsKeySafer(info.LHandShapeMotions))
+						ByteConverter.GetBytes(labels[info.LHandShapeMotions]).CopyTo(fc, ptr + 0x24);
+					if (labels.ContainsKeySafer(info.RHandPart))
+						ByteConverter.GetBytes(labels[info.RHandPart]).CopyTo(fc, ptr + 0x28);
+					if (labels.ContainsKeySafer(info.RHandAnims))
+						ByteConverter.GetBytes(labels[info.RHandAnims]).CopyTo(fc, ptr + 0x2C);
+					if (labels.ContainsKeySafer(info.RHandShapeMotions))
+						ByteConverter.GetBytes(labels[info.RHandShapeMotions]).CopyTo(fc, ptr + 0x30);
 				}
+			}
 			ptr = fc.GetPointer(0x24, key);
-			if (ptr != 0 && labels.ContainsKeySafer(ini.EWBodyAnims))
-				ByteConverter.GetBytes(labels[ini.EWBodyAnims]).CopyTo(fc, ptr);
+			if (ptr != 0 && labels.ContainsKeySafer(ini.MechEggmanBodyAnims))
+				ByteConverter.GetBytes(labels[ini.MechEggmanBodyAnims]).CopyTo(fc, ptr);
 			ptr = fc.GetPointer(4, key);
 			if (ptr != 0 && labels.ContainsKeySafer(ini.Camera))
 				ByteConverter.GetBytes(labels[ini.Camera]).CopyTo(fc, ptr);
@@ -367,13 +494,13 @@ namespace SA_Tools.SAArc
 		private static string GetModel(byte[] fc, int address, uint key, string fn)
 		{
 			string name = null;
-			int ptr = fc.GetPointer(address, key);
-			if (ptr != 0)
+			int ptr3 = fc.GetPointer(address, key);
+			if (ptr3 != 0)
 			{
-				name = $"object_{ptr:X8}";
+				name = $"object_{ptr3:X8}";
 				if (!nodenames.Contains(name))
 				{
-					NJS_OBJECT obj = new NJS_OBJECT(fc, ptr, key, ModelFormat.Chunk, null);
+					NJS_OBJECT obj = new NJS_OBJECT(fc, ptr3, key, ModelFormat.Chunk, null);
 					name = obj.Name;
 					List<string> names = new List<string>(obj.GetObjects().Select((o) => o.Name));
 					foreach (string s in names)
@@ -393,9 +520,9 @@ namespace SA_Tools.SAArc
 				mtn = motions[ByteConverter.ToInt32(fc, address)];
 			else
 			{
-				int ptr = fc.GetPointer(address, key);
-				if (ptr != 0)
-					mtn = new NJS_MOTION(fc, ptr, key, cnt);
+				int ptr3 = fc.GetPointer(address, key);
+				if (ptr3 != 0)
+					mtn = new NJS_MOTION(fc, ptr3, key, cnt);
 			}
 			if (mtn == null) return null;
 			if (!motionfiles.ContainsKey(mtn.Name) || motionfiles[mtn.Name].Filename == null)
@@ -449,23 +576,29 @@ namespace SA_Tools.SAArc
 		}
 		public Dictionary<string, string> Files { get; set; } = new Dictionary<string, string>();
 		public string Camera { get; set; }
-		public string SBodyAnims { get; set; }
 		public List<MiniEventChars> Sonic { get; set; } = new List<MiniEventChars>();
-		public string ShBodyAnims { get; set; }
 		public List<MiniEventChars> Shadow { get; set; } = new List<MiniEventChars>();
-		public string KBodyAnims { get; set; }
 		public List<MiniEventChars> Knuckles { get; set; } = new List<MiniEventChars>();
-		public string RBodyAnims { get; set; }
 		public List<MiniEventChars> Rouge { get; set; } = new List<MiniEventChars>();
-		public string EWBodyAnims { get; set; }
+		public string MechEggmanBodyAnims { get; set; }
 		public List<string> Motions { get; set; }
 	}
 
 	public class MiniEventChars
 	{
-		public string Part { get; set; }
-		public string Anims { get; set; }
-		public string ShapeMotions { get; set; }
+		public string BodyAnims { get; set; }
+		public string HeadPart { get; set; }
+		public string HeadAnims { get; set; }
+		public string HeadShapeMotions { get; set; }
+		public string MouthPart { get; set; }
+		public string MouthAnims { get; set; }
+		public string MouthShapeMotions { get; set; }
+		public string LHandPart { get; set; }
+		public string LHandAnims { get; set; }
+		public string LHandShapeMotions { get; set; }
+		public string RHandPart { get; set; }
+		public string RHandAnims { get; set; }
+		public string RHandShapeMotions { get; set; }
 	}
 }
 
