@@ -50,7 +50,7 @@ namespace SA_Tools.SAArc
 			{
 				Console.WriteLine("Sonic is in this Mini-Event");
 				Directory.CreateDirectory(Path.Combine(path, "Sonic"));
-				MiniEventChars data = new MiniEventChars();
+				MiniEventSonic data = new MiniEventSonic();
 				data.BodyAnims = GetMotion(fc, ptr, key, $"Sonic\\Body.saanim", motions, 62);
 				int ptr2 = fc.GetPointer(ptr + 4, key);
 					if (ptr2 != 0)
@@ -107,7 +107,7 @@ namespace SA_Tools.SAArc
 			{
 				Console.WriteLine("Shadow is in this Mini-Event");
 				Directory.CreateDirectory(Path.Combine(path, "Shadow"));
-				MiniEventChars data = new MiniEventChars();
+				MiniEventShadow data = new MiniEventShadow();
 				data.BodyAnims = GetMotion(fc, ptr, key, $"Shadow\\Body.saanim", motions, 62);
 				int ptr2 = fc.GetPointer(ptr + 4, key);
 				if (ptr2 != 0)
@@ -164,7 +164,7 @@ namespace SA_Tools.SAArc
 			{
 				Console.WriteLine("Knuckles is in this Mini-Event");
 				Directory.CreateDirectory(Path.Combine(path, "Knuckles"));
-				MiniEventChars data = new MiniEventChars();
+				MiniEventKnux data = new MiniEventKnux();
 				data.BodyAnims = GetMotion(fc, ptr, key, $"Knuckles\\Body.saanim", motions, 62);
 				int ptr2 = fc.GetPointer(ptr + 4, key);
 				if (ptr2 != 0)
@@ -221,7 +221,7 @@ namespace SA_Tools.SAArc
 			{
 				Console.WriteLine("Rouge is in this Mini-Event");
 				Directory.CreateDirectory(Path.Combine(path, "Rouge"));
-				MiniEventChars data = new MiniEventChars();
+				MiniEventRouge data = new MiniEventRouge();
 				data.BodyAnims = GetMotion(fc, ptr, key, $"Rouge\\Body.saanim", motions, 62);
 				int ptr2 = fc.GetPointer(ptr + 4, key);
 				if (ptr2 != 0)
@@ -282,7 +282,10 @@ namespace SA_Tools.SAArc
 			}
 			ptr = fc.GetPointer(4, key);
 			if (ptr != 0)
+			{
 				ini.Camera = GetMotion(fc, ptr + 0x10, key, $"Camera.saanim", motions, 1);
+				//ini.CamFrames = ByteConverter.ToInt32(fc, ptr + 4);
+			}
 			else
 				Console.WriteLine("Mini-Event does not contain a camera.");
 			foreach (var item in motionfiles.Values)
@@ -345,7 +348,7 @@ namespace SA_Tools.SAArc
 			int ptr = fc.GetPointer(8, key);
 			if (ptr != 0)
 			{
-				MiniEventChars info = ini.Sonic[0];
+				MiniEventSonic info = ini.Sonic[0];
 				if (labels.ContainsKeySafer(info.BodyAnims))
 				ByteConverter.GetBytes(labels[info.BodyAnims]).CopyTo(fc, ptr);
 				if (info.HeadPart != null)
@@ -379,7 +382,7 @@ namespace SA_Tools.SAArc
 			ptr = fc.GetPointer(0xC, key);
 			if (ptr != 0)
 			{
-				MiniEventChars info = ini.Shadow[0];
+				MiniEventShadow info = ini.Shadow[0];
 				if (labels.ContainsKeySafer(info.BodyAnims))
 					ByteConverter.GetBytes(labels[info.BodyAnims]).CopyTo(fc, ptr);
 				if (info.HeadPart != null)
@@ -413,7 +416,7 @@ namespace SA_Tools.SAArc
 			ptr = fc.GetPointer(0x18, key);
 			if (ptr != 0)
 			{
-				MiniEventChars info = ini.Knuckles[0];
+				MiniEventKnux info = ini.Knuckles[0];
 				if (labels.ContainsKeySafer(info.BodyAnims))
 					ByteConverter.GetBytes(labels[info.BodyAnims]).CopyTo(fc, ptr);
 				if (info.HeadPart != null)
@@ -447,7 +450,7 @@ namespace SA_Tools.SAArc
 			ptr = fc.GetPointer(0x1C, key);
 			if (ptr != 0)
 			{
-				MiniEventChars info = ini.Rouge[0];
+				MiniEventRouge info = ini.Rouge[0];
 				if (labels.ContainsKeySafer(info.BodyAnims))
 					ByteConverter.GetBytes(labels[info.BodyAnims]).CopyTo(fc, ptr);
 				if (info.HeadPart != null)
@@ -483,7 +486,10 @@ namespace SA_Tools.SAArc
 				ByteConverter.GetBytes(labels[ini.MechEggmanBodyAnims]).CopyTo(fc, ptr);
 			ptr = fc.GetPointer(4, key);
 			if (ptr != 0 && labels.ContainsKeySafer(ini.Camera))
-				ByteConverter.GetBytes(labels[ini.Camera]).CopyTo(fc, ptr);
+			{
+				ByteConverter.GetBytes(labels[ini.Camera]).CopyTo(fc, 4);
+				//ByteConverter.GetBytes(labels[ini.Camera]).CopyTo(fc, ptr + 0x10);
+			}
 			if (Path.GetExtension(filename).Equals(".prs", StringComparison.OrdinalIgnoreCase))
 				Prs.Compress(fc, filename);
 			else
@@ -576,15 +582,67 @@ namespace SA_Tools.SAArc
 		}
 		public Dictionary<string, string> Files { get; set; } = new Dictionary<string, string>();
 		public string Camera { get; set; }
-		public List<MiniEventChars> Sonic { get; set; } = new List<MiniEventChars>();
-		public List<MiniEventChars> Shadow { get; set; } = new List<MiniEventChars>();
-		public List<MiniEventChars> Knuckles { get; set; } = new List<MiniEventChars>();
-		public List<MiniEventChars> Rouge { get; set; } = new List<MiniEventChars>();
+		//public int CamFrames { get; set; }
+		public List<MiniEventSonic> Sonic { get; set; } = new List<MiniEventSonic>();
+		public List<MiniEventShadow> Shadow { get; set; } = new List<MiniEventShadow>();
+		public List<MiniEventKnux> Knuckles { get; set; } = new List<MiniEventKnux>();
+		public List<MiniEventRouge> Rouge { get; set; } = new List<MiniEventRouge>();
 		public string MechEggmanBodyAnims { get; set; }
 		public List<string> Motions { get; set; }
 	}
 
-	public class MiniEventChars
+	public class MiniEventSonic
+	{
+		public string BodyAnims { get; set; }
+		public string HeadPart { get; set; }
+		public string HeadAnims { get; set; }
+		public string HeadShapeMotions { get; set; }
+		public string MouthPart { get; set; }
+		public string MouthAnims { get; set; }
+		public string MouthShapeMotions { get; set; }
+		public string LHandPart { get; set; }
+		public string LHandAnims { get; set; }
+		public string LHandShapeMotions { get; set; }
+		public string RHandPart { get; set; }
+		public string RHandAnims { get; set; }
+		public string RHandShapeMotions { get; set; }
+	}
+
+	public class MiniEventShadow
+	{
+		public string BodyAnims { get; set; }
+		public string HeadPart { get; set; }
+		public string HeadAnims { get; set; }
+		public string HeadShapeMotions { get; set; }
+		public string MouthPart { get; set; }
+		public string MouthAnims { get; set; }
+		public string MouthShapeMotions { get; set; }
+		public string LHandPart { get; set; }
+		public string LHandAnims { get; set; }
+		public string LHandShapeMotions { get; set; }
+		public string RHandPart { get; set; }
+		public string RHandAnims { get; set; }
+		public string RHandShapeMotions { get; set; }
+	}
+
+	public class MiniEventKnux
+	{
+		public string BodyAnims { get; set; }
+		public string HeadPart { get; set; }
+		public string HeadAnims { get; set; }
+		public string HeadShapeMotions { get; set; }
+		public string MouthPart { get; set; }
+		public string MouthAnims { get; set; }
+		public string MouthShapeMotions { get; set; }
+		public string LHandPart { get; set; }
+		public string LHandAnims { get; set; }
+		public string LHandShapeMotions { get; set; }
+		public string RHandPart { get; set; }
+		public string RHandAnims { get; set; }
+		public string RHandShapeMotions { get; set; }
+	}
+
+	public class MiniEventRouge
 	{
 		public string BodyAnims { get; set; }
 		public string HeadPart { get; set; }
